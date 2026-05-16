@@ -1,0 +1,38 @@
+; Engine configuration file.
+; Best edited using the editor UI and not directly.
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="RIFT: The Bestiary Protocol"
+config/description="Sci-fi survival brawler for Android tablets by Code Max Studios."
+config/version="0.1.0"
+config/icon="res://assets/icon.svg"
+run/main_scene="res://scenes/Main.tscn"
+
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true
+
+[input]
+
+ui_accept={
+"deadzone": 0.5,
+"events": []
+}
+ui_cancel={
+"deadzone": 0.5,
+"events": []
+}

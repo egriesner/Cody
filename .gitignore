@@ -1,0 +1,7 @@
+.godot/
+.import/
+export_presets.cfg.bak
+*.apk
+*.aab
+*.keystore
+*.jks
