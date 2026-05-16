@@ -69,7 +69,19 @@ Keep this keystore safe and backed up.
 - Stable 60fps target on low/mid-tier tablets where possible.
 - Clear state feedback for `EXHAUSTED`, `EAT`, and `RHINO_CHARGE`.
 
-## 7) Branding
+## 7) Full-Game Playtest Acceptance Gates
+
+Before production store submission, verify:
+
+1. New run starts from main menu and reaches wave gameplay.
+2. Continue run restores inventory/progression correctly.
+3. Objective completion unlocks boss phase (Overlord Vex).
+4. Victory and defeat both return cleanly to main menu.
+5. Profile stats update after each run (wins/runs/wave/pages).
+6. Android orientation stays landscape and touch controls remain accurate.
+7. No soft lock when pausing/resuming or ending a run.
+
+## 8) Branding
 
 - Studio name in metadata: **Code Max Studios**
 - Suggested publisher title in Play Console:

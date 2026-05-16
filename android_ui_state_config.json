@@ -170,5 +170,17 @@
         "unlockLevel": 4
       }
     ]
+  },
+  "runGoals": {
+    "bossUnlockMinWave": 8,
+    "bossUnlockBestiaryPages": 6,
+    "bossUnlockBestiaryEntries": 24
+  },
+  "boss": {
+    "name": "Overlord Vex",
+    "baseHealth": 1800,
+    "healthPerWave": 80,
+    "contactDamage": 16,
+    "shockwaveDamage": 18
   }
 }

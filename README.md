@@ -9,9 +9,15 @@ Developer/Studio: **Code Max Studios**
 - `project.godot`
   - Godot project entry point.
 - `scenes/Main.tscn`
-  - Main playable scene.
+  - App shell scene (main menu, settings, run launcher).
+- `scenes/Game.tscn`
+  - Standalone gameplay runtime scene.
 - `scripts/Main.gd`
-  - Runtime logic for touch controls, state machine hooks, survival, hotbar context switching, companion triggers, enemy waves, crafting, objectives, and save/load.
+  - App controller (menu, settings, profile flow, new run/continue run).
+- `scripts/GameRuntime.gd`
+  - Full gameplay runtime: touch controls, survival loop, wave combat, companions, crafting, objectives, boss phase, and run completion states.
+- `scripts/SaveManager.gd`
+  - Persistent profile storage and session result application (`user://rift_profile.json`).
 - `assets/icon.svg`
   - Base app icon.
 - `export_presets.cfg`
@@ -37,7 +43,7 @@ Developer/Studio: **Code Max Studios**
    - Left-click + drag in right zone to aim/fire.
    - Use hotbar buttons to switch to food/heavy weapon behaviors.
 
-## Current Prototype Features (Phase 2)
+## Current Game Features
 
 - Continuous wave combat with drone variants (drone, brute, spitter)
 - Resource economy (`human_scrap`, `alien_crystals`, foods) and scavenge bursts
@@ -47,7 +53,11 @@ Developer/Studio: **Code Max Studios**
   - Annalize railgun support + loot bonus
 - Daily-style objective tracker with XP rewards
 - Leveling + progression stats + bestiary page tracking
-- Save/Load to `user://rift_save.json`
+- Main menu with profile summary and continue support
+- Settings panel (difficulty, vibration toggle, master volume value)
+- Overlord Vex boss phase unlock after progression gates
+- Victory/defeat flow with run summary panel
+- Profile save/continue persistence via `user://rift_profile.json`
 
 ## Android Release
 
