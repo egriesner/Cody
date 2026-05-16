@@ -434,12 +434,16 @@ func _setup_feedback_bus() -> void:
 
 
 func _on_feedback_triggered(event_name: String, flash_color: Color, flash_duration: float) -> void:
+	if feedback_overlay == null:
+		return
 	feedback_overlay.color = flash_color
 	feedback_flash_alpha = flash_color.a
 	feedback_flash_decay = flash_color.a / max(flash_duration, 0.02)
 
 
 func _update_feedback_overlay(delta: float) -> void:
+	if feedback_overlay == null:
+		return
 	if feedback_flash_alpha <= 0.001:
 		feedback_overlay.color = Color(feedback_overlay.color.r, feedback_overlay.color.g, feedback_overlay.color.b, 0.0)
 		return
