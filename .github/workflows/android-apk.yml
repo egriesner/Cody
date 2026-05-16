@@ -86,9 +86,12 @@ jobs:
         env:
           GODOT_BIN: godot4
           INSTALL_ANDROID_BUILD_TEMPLATE: "1"
-          GODOT_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/debug.keystore
-          GODOT_ANDROID_KEYSTORE_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_PASSWORD: android
+          GODOT_ANDROID_KEYSTORE_DEBUG_PATH: ${{ runner.temp }}/debug.keystore
+          GODOT_ANDROID_KEYSTORE_DEBUG_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_DEBUG_PASSWORD: android
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/debug.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
         run: |
           ./tools/build_apk.sh "${BUILD_MODE}"
 

@@ -97,9 +97,9 @@ jobs:
           GODOT_BIN: godot4
           PRESET_NAME: "Android AAB"
           INSTALL_ANDROID_BUILD_TEMPLATE: "1"
-          GODOT_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/release.keystore
-          GODOT_ANDROID_KEYSTORE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
-          GODOT_ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/release.keystore
+          GODOT_ANDROID_KEYSTORE_RELEASE_USER: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
           ./tools/build_apk.sh release aab
 
