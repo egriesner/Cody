@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a1430"/>
+      <stop offset="100%" stop-color="#1a2044"/>
+    </linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <circle cx="340" cy="300" r="240" fill="#42bfff" opacity="0.20"/>
+  <circle cx="1480" cy="320" r="280" fill="#a86dff" opacity="0.18"/>
+  <circle cx="980" cy="620" r="340" fill="#56f3e0" opacity="0.10"/>
+
+  <rect x="14" y="10" width="1892" height="178" rx="18" fill="#08142d" opacity="0.86" stroke="#6be4ff" stroke-width="3"/>
+  <rect x="14" y="870" width="1892" height="196" rx="18" fill="#08142d" opacity="0.82" stroke="#ba7dff" stroke-width="3"/>
+
+  <text x="34" y="50" fill="#b7f5ff" font-family="Arial" font-size="38" font-weight="700">RIFT: The Bestiary Protocol</text>
+  <text x="430" y="48" fill="#95ffe9" font-family="Arial" font-size="30">Biome: Whispering Archives</text>
+  <text x="860" y="48" fill="#ffc4ff" font-family="Arial" font-size="30">Wave 9 | Boss: Overlord Vex</text>
+  <text x="34" y="88" fill="#d5f6ff" font-family="Arial" font-size="24">State: RHINO_CHARGE | Lives: 3/3</text>
+  <text x="34" y="162" fill="#9de7ff" font-family="Arial" font-size="22">Objectives: Defeat drones, collect pages, craft weapon</text>
+
+  <rect x="36" y="96" width="328" height="26" rx="8" fill="#22365f" stroke="#70b0ff"/>
+  <rect x="40" y="100" width="252" height="18" rx="6" fill="#58f5ce"/>
+  <rect x="36" y="132" width="328" height="26" rx="8" fill="#22365f" stroke="#70b0ff"/>
+  <rect x="40" y="136" width="196" height="18" rx="6" fill="#ff78b0"/>
+
+  <circle cx="980" cy="560" r="70" fill="#7ae8ff" opacity="0.25"/>
+  <polygon points="980,524 1012,560 980,596 948,560" fill="#9ff4ff" stroke="#e5ffff" stroke-width="3"/>
+  <line x1="980" y1="560" x2="1108" y2="530" stroke="#ddfbff" stroke-width="6"/>
+
+  <circle cx="760" cy="470" r="22" fill="#bf7dff"/><rect x="736" y="434" width="48" height="6" fill="#69f2b0"/>
+  <circle cx="1210" cy="520" r="22" fill="#ff8fa0"/><rect x="1186" y="484" width="48" height="6" fill="#69f2b0"/>
+  <circle cx="1140" cy="690" r="22" fill="#8fffb4"/><rect x="1116" y="654" width="48" height="6" fill="#69f2b0"/>
+  <circle cx="820" cy="680" r="22" fill="#bf7dff"/><rect x="796" y="644" width="48" height="6" fill="#69f2b0"/>
+
+  <circle cx="1480" cy="360" r="80" fill="#ff6f95" opacity="0.92"/>
+  <circle cx="1480" cy="360" r="118" fill="none" stroke="#ff9bbb" stroke-width="3" opacity="0.55"/>
+  <rect x="420" y="206" width="1080" height="24" rx="8" fill="#1a1024"/>
+  <rect x="424" y="210" width="766" height="16" rx="6" fill="#ff729a"/>
+
+  <g>
+    <rect x="620" y="916" width="120" height="78" rx="12" fill="#1a335f" stroke="#6ee7ff" stroke-width="3"/><text x="674" y="966" fill="#e4f9ff" font-family="Arial" font-size="28">1</text>
+    <rect x="760" y="916" width="120" height="78" rx="12" fill="#27508a" stroke="#9ff8ff" stroke-width="3"/><text x="814" y="966" fill="#e4f9ff" font-family="Arial" font-size="28">2</text>
+    <rect x="900" y="916" width="120" height="78" rx="12" fill="#1a335f" stroke="#6ee7ff" stroke-width="3"/><text x="954" y="966" fill="#e4f9ff" font-family="Arial" font-size="28">3</text>
+    <rect x="1040" y="916" width="120" height="78" rx="12" fill="#1a335f" stroke="#6ee7ff" stroke-width="3"/><text x="1094" y="966" fill="#e4f9ff" font-family="Arial" font-size="28">4</text>
+    <rect x="1180" y="916" width="120" height="78" rx="12" fill="#1a335f" stroke="#6ee7ff" stroke-width="3"/><text x="1234" y="966" fill="#e4f9ff" font-family="Arial" font-size="28">5</text>
+  </g>
+
+  <rect x="1530" y="884" width="340" height="138" rx="20" fill="#1d5fa6" stroke="#9ff7ff" stroke-width="4"/>
+  <text x="1622" y="966" fill="#e7fcff" font-family="Arial" font-size="42" font-weight="700">ATTACK</text>
+
+  <circle cx="280" cy="860" r="92" fill="#5ee2ff" opacity="0.20" stroke="#97f7ff" stroke-width="3"/>
+  <circle cx="280" cy="860" r="30" fill="#dafbff" opacity="0.75"/>
+  <circle cx="1640" cy="860" r="92" fill="#bf7fff" opacity="0.20" stroke="#ecc6ff" stroke-width="3"/>
+  <circle cx="1640" cy="860" r="30" fill="#f2dfff" opacity="0.80"/>
+
+  <rect x="0" y="0" width="96" height="1080" fill="#65c1ff" opacity="0.10"/>
+  <rect x="1824" y="0" width="96" height="1080" fill="#c481ff" opacity="0.10"/>
+</svg>
