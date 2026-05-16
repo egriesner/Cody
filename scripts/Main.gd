@@ -35,6 +35,7 @@ var button_secondary_texture: Texture2D
 func _ready() -> void:
 	_load_profile()
 	_load_visual_assets()
+	_apply_master_volume_from_profile()
 	_build_menu_ui()
 	_refresh_menu()
 
@@ -59,6 +60,15 @@ func _load_texture_if_exists(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+
+func _apply_master_volume_from_profile() -> void:
+	var settings: Dictionary = profile.get("settings", {})
+	var volume := float(settings.get("master_volume", 0.85))
+	var bus_index := AudioServer.get_bus_index("Master")
+	if bus_index < 0:
+		return
+	AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(volume, 0.0001, 1.0)))
 
 
 func _build_menu_ui() -> void:
@@ -422,6 +432,7 @@ func _on_save_settings_pressed() -> void:
 			settings["difficulty"] = "normal"
 	profile["settings"] = settings
 	_save_profile()
+	_apply_master_volume_from_profile()
 	status_label.text = "Settings saved."
 
 

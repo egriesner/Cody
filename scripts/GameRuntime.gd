@@ -51,6 +51,22 @@ const BIOME_BG_PATHS := [
 	"res://assets/artpack/backgrounds/biome_whispering_archives.svg",
 	"res://assets/artpack/backgrounds/biome_plasma_crater.svg"
 ]
+const BIOME_MUSIC_PATHS := [
+	"res://assets/audio/music/biome_scrap_dunes.wav",
+	"res://assets/audio/music/biome_whispering_archives.wav",
+	"res://assets/audio/music/biome_plasma_crater.wav"
+]
+const SFX_PATHS := {
+	"attack": "res://assets/audio/sfx/attack.wav",
+	"hit": "res://assets/audio/sfx/hit.wav",
+	"dash": "res://assets/audio/sfx/dash.wav",
+	"enemy_down": "res://assets/audio/sfx/enemy_down.wav",
+	"boss_alarm": "res://assets/audio/sfx/boss_alarm.wav",
+	"ui_click": "res://assets/audio/sfx/ui_click.wav"
+}
+const MAX_ACTIVE_ENEMIES := 56
+const MAX_ACTIVE_PROJECTILES := 36
+const MAX_ACTIVE_VFX_PARTICLES := 180
 
 var profile: Dictionary = {}
 var config: Dictionary = {}
@@ -261,6 +277,7 @@ var feedback_flash_alpha := 0.0
 var feedback_flash_decay := 0.0
 var ui_scale := 1.0
 var high_contrast_mode := false
+var master_volume := 0.85
 var concept_bg_texture: Texture2D
 var player_sprite_texture: Texture2D
 var enemy_drone_texture: Texture2D
@@ -280,6 +297,11 @@ var ui_move_base_texture: Texture2D
 var ui_move_knob_texture: Texture2D
 var ui_aim_base_texture: Texture2D
 var ui_aim_knob_texture: Texture2D
+var biome_music_streams: Array = []
+var sfx_streams: Dictionary = {}
+var music_player: AudioStreamPlayer
+var sfx_player: AudioStreamPlayer
+var vfx_particles: Array[Dictionary] = []
 var top_hud_panel: Panel
 var bottom_hud_panel: Panel
 
@@ -293,6 +315,7 @@ func _ready() -> void:
 	_load_config()
 	_apply_profile_bonuses()
 	_load_visual_assets()
+	_setup_audio_players()
 	_setup_feedback_bus()
 	_build_hud()
 	_apply_hud_visual_mode()
@@ -355,6 +378,7 @@ func _load_visual_assets() -> void:
 	ui_aim_base_texture = _load_texture_if_exists(JOYSTICK_AIM_BASE_PATH)
 	ui_aim_knob_texture = _load_texture_if_exists(JOYSTICK_AIM_KNOB_PATH)
 	_load_hotbar_icon_textures()
+	_load_audio_streams()
 
 
 func _load_texture_if_exists(path: String) -> Texture2D:
@@ -368,6 +392,68 @@ func _load_hotbar_icon_textures() -> void:
 	for path in HOTBAR_ICON_PATHS:
 		var icon_texture: Texture2D = _load_texture_if_exists(path)
 		hotbar_icon_textures.append(icon_texture)
+
+
+func _load_audio_streams() -> void:
+	biome_music_streams.clear()
+	for path in BIOME_MUSIC_PATHS:
+		biome_music_streams.append(_load_audio_stream_if_exists(path))
+	sfx_streams.clear()
+	for key in SFX_PATHS.keys():
+		var stream: AudioStream = _load_audio_stream_if_exists(String(SFX_PATHS[key]))
+		sfx_streams[key] = stream
+
+
+func _load_audio_stream_if_exists(path: String) -> AudioStream:
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as AudioStream
+
+
+func _setup_audio_players() -> void:
+	music_player = AudioStreamPlayer.new()
+	music_player.bus = "Master"
+	music_player.volume_db = -10.0
+	add_child(music_player)
+
+	sfx_player = AudioStreamPlayer.new()
+	sfx_player.bus = "Master"
+	sfx_player.volume_db = -7.0
+	add_child(sfx_player)
+
+	_apply_master_volume()
+	_update_biome_music(true)
+
+
+func _apply_master_volume() -> void:
+	var bus_index := AudioServer.get_bus_index("Master")
+	if bus_index < 0:
+		return
+	AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(master_volume, 0.0001, 1.0)))
+
+
+func _play_sfx(name: String) -> void:
+	if sfx_player == null:
+		return
+	var stream := sfx_streams.get(name, null) as AudioStream
+	if stream == null:
+		return
+	sfx_player.stream = stream
+	sfx_player.play()
+
+
+func _update_biome_music(force_restart: bool = false) -> void:
+	if music_player == null:
+		return
+	if current_biome_index < 0 or current_biome_index >= biome_music_streams.size():
+		return
+	var desired_stream: AudioStream = biome_music_streams[current_biome_index]
+	if desired_stream == null:
+		return
+	if not force_restart and music_player.stream == desired_stream and music_player.playing:
+		return
+	music_player.stream = desired_stream
+	music_player.play()
 
 
 func _texture_for_enemy_type(enemy_type: String) -> Texture2D:
@@ -411,12 +497,14 @@ func _process(delta: float) -> void:
 
 	if game_ended:
 		_update_feedback_overlay(delta)
+		_update_vfx(delta)
 		_update_hud()
 		queue_redraw()
 		return
 
 	if is_soft_paused:
 		_update_feedback_overlay(delta)
+		_update_vfx(delta)
 		_update_hud()
 		queue_redraw()
 		return
@@ -438,6 +526,7 @@ func _process(delta: float) -> void:
 	_check_run_completion()
 	_update_checkpoint_emitter(delta)
 	_update_feedback_overlay(delta)
+	_update_vfx(delta)
 	_update_hud()
 	queue_redraw()
 
@@ -524,6 +613,15 @@ func _draw() -> void:
 		var tail := projectile_position - projectile_velocity.normalized() * 18.0
 		draw_line(tail, projectile_position, Color(0.46, 1.0, 0.88, 0.75), 4.0)
 		draw_circle(projectile_position, 8.0, Color(0.58, 1.0, 0.90, 0.94))
+
+	for particle in vfx_particles:
+		var particle_pos: Vector2 = particle.get("position", Vector2.ZERO)
+		var particle_color: Color = particle.get("color", Color.WHITE)
+		var particle_ttl: float = particle.get("ttl", 0.0)
+		var particle_total_ttl: float = max(0.001, float(particle.get("total_ttl", 0.001)))
+		var particle_size: float = particle.get("size", 4.0)
+		var fade := clamp(particle_ttl / particle_total_ttl, 0.0, 1.0)
+		draw_circle(particle_pos, particle_size * fade, Color(particle_color.r, particle_color.g, particle_color.b, particle_color.a * fade))
 
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
@@ -631,6 +729,7 @@ func _apply_profile_bonuses() -> void:
 	difficulty_name = difficulty
 	ui_scale = float(settings.get("ui_scale", 1.0))
 	high_contrast_mode = bool(settings.get("high_contrast", false))
+	master_volume = float(settings.get("master_volume", 0.85))
 	enemy_health_multiplier = 1.0
 	enemy_damage_multiplier = 1.0
 	enemy_spawn_multiplier = 1.0
@@ -1407,6 +1506,47 @@ func _update_dash_and_combo(delta: float) -> void:
 		combo_multiplier = 1.0
 
 
+func _spawn_vfx_burst(position: Vector2, color: Color, count: int, speed: float, ttl: float, size: float) -> void:
+	if vfx_particles.size() >= MAX_ACTIVE_VFX_PARTICLES:
+		return
+	var emit_count := mini(count, MAX_ACTIVE_VFX_PARTICLES - vfx_particles.size())
+	for i in emit_count:
+		var angle := randf_range(0.0, TAU)
+		var velocity := Vector2.RIGHT.rotated(angle) * randf_range(speed * 0.55, speed * 1.05)
+		vfx_particles.append({
+			"position": position,
+			"velocity": velocity,
+			"ttl": ttl,
+			"total_ttl": ttl,
+			"color": color,
+			"size": size
+		})
+
+
+func _update_vfx(delta: float) -> void:
+	if vfx_particles.is_empty():
+		return
+	var remove_indexes: Array[int] = []
+	for i in vfx_particles.size():
+		var particle: Dictionary = vfx_particles[i]
+		var position: Vector2 = particle.get("position", Vector2.ZERO)
+		var velocity: Vector2 = particle.get("velocity", Vector2.ZERO)
+		var ttl: float = particle.get("ttl", 0.0)
+		position += velocity * delta
+		velocity *= 0.92
+		ttl -= delta
+		particle["position"] = position
+		particle["velocity"] = velocity
+		particle["ttl"] = ttl
+		vfx_particles[i] = particle
+		if ttl <= 0.0:
+			remove_indexes.append(i)
+	if not remove_indexes.is_empty():
+		remove_indexes.reverse()
+		for index in remove_indexes:
+			vfx_particles.remove_at(index)
+
+
 func _apply_hotbar_context_rules() -> void:
 	loadout_move_speed_multiplier = 1.0
 	if player_state == PlayerState.RHINO_CHARGE:
@@ -1454,7 +1594,9 @@ func _update_combat(delta: float) -> void:
 func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 	attack_cooldown = 0.24
 	feedback_bus.emit_feedback("attack")
+	_play_sfx("attack")
 	var attack_dir := facing if facing.length() > 0.2 else player_direction
+	_spawn_vfx_burst(player_position + attack_dir * 30.0, Color(0.70, 0.95, 1.0, 0.95), 4, 155.0, 0.20, 6.0)
 
 	if input_mode == InputMode.RHINO_BOOST_MODE:
 		var rhino_kills := _damage_enemies_radius(player_position, 150.0, 75.0)
@@ -1506,6 +1648,7 @@ func _damage_enemies_arc(origin: Vector2, direction: Vector2, range: float, dot_
 		if to_enemy.normalized().dot(direction) < dot_threshold:
 			continue
 		enemy["hp"] = float(enemy.get("hp", 0.0)) - damage
+		_spawn_vfx_burst(enemy_position, Color(0.92, 0.64, 1.0, 0.95), 3, 140.0, 0.22, 5.0)
 		active_enemies[i] = enemy
 		if float(enemy.get("hp", 0.0)) <= 0.0:
 			to_remove.append(i)
@@ -1529,6 +1672,7 @@ func _damage_enemies_radius(origin: Vector2, radius: float, damage: float) -> in
 		if enemy_position.distance_to(origin) > radius:
 			continue
 		enemy["hp"] = float(enemy.get("hp", 0.0)) - damage
+		_spawn_vfx_burst(enemy_position, Color(0.56, 0.98, 0.90, 0.95), 4, 160.0, 0.22, 5.0)
 		active_enemies[i] = enemy
 		if float(enemy.get("hp", 0.0)) <= 0.0:
 			to_remove.append(i)
@@ -1642,6 +1786,7 @@ func _start_next_wave() -> void:
 	wave_number += 1
 	wave_active = true
 	enemy_projectiles.clear()
+	vfx_particles.clear()
 	var base_spawn := wave_base_enemies + wave_number * wave_enemy_growth
 	wave_spawn_remaining = maxi(1, int(round(float(base_spawn) * enemy_spawn_multiplier)))
 	wave_spawn_tick = 0.15
@@ -1649,6 +1794,8 @@ func _start_next_wave() -> void:
 
 
 func _spawn_enemy() -> void:
+	if active_enemies.size() >= MAX_ACTIVE_ENEMIES:
+		return
 	var angle := randf_range(0.0, TAU)
 	var enemy_position := player_position + Vector2.RIGHT.rotated(angle) * wave_spawn_radius
 	enemy_position.x = clamp(enemy_position.x, left_dead_zone_px + 50.0, viewport_size.x - right_dead_zone_px - 50.0)
@@ -1709,6 +1856,8 @@ func _update_enemies(delta: float) -> void:
 
 
 func _spawn_enemy_projectile(origin: Vector2) -> void:
+	if enemy_projectiles.size() >= MAX_ACTIVE_PROJECTILES:
+		return
 	var fire_direction := (player_position - origin).normalized()
 	if fire_direction.length() <= 0.01:
 		return
@@ -1781,12 +1930,15 @@ func _update_enemy_contacts(delta: float) -> void:
 func _apply_player_damage(amount: float, source: String) -> void:
 	if dash_time_left > 0.0:
 		status_label.text = "Dash evaded %s." % source
+		_spawn_vfx_burst(player_position, Color(0.84, 0.96, 1.0, 0.92), 5, 180.0, 0.24, 6.0)
 		return
 	health = clamp(health - amount, 0.0, max_health)
 	combo_streak = 0
 	combo_multiplier = 1.0
 	combo_decay_time_left = 0.0
 	feedback_bus.emit_feedback("hit")
+	_play_sfx("hit")
+	_spawn_vfx_burst(player_position, Color(1.0, 0.52, 0.65, 0.95), 7, 200.0, 0.26, 6.0)
 	status_label.text = "Hit by %s: -%.0f HP" % [source, amount]
 	if health > 0.0:
 		return
@@ -1801,6 +1953,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	player_position = get_viewport_rect().size * 0.5
 	active_enemies.clear()
 	enemy_projectiles.clear()
+	vfx_particles.clear()
 	wave_active = false
 	wave_wait_tick = 2.5
 	boss_active = false
@@ -1809,11 +1962,14 @@ func _apply_player_damage(amount: float, source: String) -> void:
 
 func _on_enemy_defeated(enemy: Dictionary) -> void:
 	drones_defeated += 1
+	_play_sfx("enemy_down")
 	combo_streak += 1
 	combo_decay_time_left = combo_timeout_seconds
 	combo_multiplier = min(2.4, 1.0 + float(combo_streak - 1) * 0.12)
 	max_combo_reached = float(max(max_combo_reached, combo_multiplier))
 	var enemy_type: String = enemy.get("type", "drone")
+	var enemy_pos := enemy.get("position", player_position) as Vector2
+	_spawn_vfx_burst(enemy_pos, Color(0.78, 0.68, 1.0, 0.92), 8, 180.0, 0.30, 6.0)
 	var current := int(bestiary_entries.get(enemy_type, 0))
 	bestiary_entries[enemy_type] = current + 1
 	_add_objective_progress("defeat", 1)
@@ -2011,6 +2167,7 @@ func _enter_boss_phase() -> void:
 	wave_active = false
 	active_enemies.clear()
 	enemy_projectiles.clear()
+	vfx_particles.clear()
 	boss = {
 		"name": "Overlord Vex",
 		"position": Vector2(viewport_size.x * 0.72, viewport_size.y * 0.55),
@@ -2022,6 +2179,7 @@ func _enter_boss_phase() -> void:
 	player_state = PlayerState.SUPER_BEAST
 	status_label.text = "Titan Protocol complete. Overlord Vex engaged!"
 	feedback_bus.emit_feedback("boss")
+	_play_sfx("boss_alarm")
 
 
 func _update_boss_system(delta: float) -> void:
@@ -2049,6 +2207,7 @@ func _update_boss_system(delta: float) -> void:
 func _on_boss_defeated() -> void:
 	boss_active = false
 	enemy_projectiles.clear()
+	vfx_particles.clear()
 	player_state = PlayerState.RIFT_WEAVER
 	status_label.text = "Overlord Vex defeated. Alpha Strain extracted."
 	feedback_bus.emit_feedback("objective")
@@ -2145,6 +2304,7 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	companion_select.select(0 if companion_id == "keeley" else 1)
 	_apply_companion_portrait()
 	keeley_upgrade_toggle.button_pressed = keeley_dna_upgrade
+	_update_biome_music(true)
 	active_enemies.clear()
 	wave_active = false
 	wave_wait_tick = 1.0
@@ -2157,6 +2317,7 @@ func _end_run(victory: bool, reason: String) -> void:
 		return
 	game_ended = true
 	enemy_projectiles.clear()
+	vfx_particles.clear()
 	is_soft_paused = true
 	pause_panel.visible = false
 	end_panel.visible = true
@@ -2331,6 +2492,7 @@ func _input_text(mode: int) -> String:
 func _on_hotbar_selected(index: int) -> void:
 	selected_hotbar_index = index
 	status_label.text = "Selected slot %d: %s" % [index + 1, hotbar_items[index].get("label", "Item")]
+	_play_sfx("ui_click")
 	_apply_hotbar_context_rules()
 
 
@@ -2364,6 +2526,8 @@ func _on_dash_pressed() -> void:
 	dash_uses_this_run += 1
 	status_label.text = "Dash burst activated."
 	feedback_bus.emit_feedback("attack")
+	_play_sfx("dash")
+	_spawn_vfx_burst(player_position, Color(0.72, 0.95, 1.0, 0.95), 10, 210.0, 0.30, 6.0)
 
 
 func _on_rhino_pressed() -> void:
@@ -2383,11 +2547,14 @@ func _on_travel_biome_pressed() -> void:
 		return
 	current_biome_index = (current_biome_index + 1) % biome_names.size()
 	status_label.text = "Moved to biome: %s" % biome_names[current_biome_index]
+	_play_sfx("ui_click")
+	_update_biome_music()
 
 
 func _on_companion_changed(index: int) -> void:
 	companion_id = "keeley" if index == 0 else "annalize"
 	companion_label.text = "Companion switched to %s" % companion_select.get_item_text(index)
+	_play_sfx("ui_click")
 	_apply_companion_portrait()
 
 
@@ -2438,11 +2605,13 @@ func _on_pause_pressed() -> void:
 		return
 	is_soft_paused = true
 	pause_panel.visible = true
+	_play_sfx("ui_click")
 
 
 func _on_resume_pressed() -> void:
 	is_soft_paused = false
 	pause_panel.visible = false
+	_play_sfx("ui_click")
 
 
 func _on_save_and_menu_pressed() -> void:

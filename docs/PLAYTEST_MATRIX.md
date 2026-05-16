@@ -38,6 +38,8 @@ Use this matrix before external tester distribution.
 - Tutorial skip and replay behavior works.
 - Critical status labels remain readable during combat.
 - Reward cadence feels frequent (no >45s without meaningful reward signal).
+- Audio mix stays clear on tablet speakers (no clipping during wave spikes).
+- VFX particles improve feedback without obscuring controls/HUD readability.
 
 ## Progression and Persistence
 

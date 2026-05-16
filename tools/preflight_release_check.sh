@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT_DIR"
+
+echo "[preflight] validating json config..."
+python3 -m json.tool "android_ui_state_config.json" >/dev/null
+
+echo "[preflight] checking required release docs/files..."
+required_files=(
+  "docs/ANDROID_RELEASE_GUIDE.md"
+  "docs/PLAYTEST_MATRIX.md"
+  "docs/PLAY_STORE_LISTING_TEMPLATE.md"
+  "docs/PRIVACY_POLICY_TEMPLATE.md"
+  "export_presets.cfg"
+  ".github/workflows/android-apk.yml"
+  ".github/workflows/android-aab.yml"
+  ".github/workflows/android-play-publish.yml"
+)
+
+for f in "${required_files[@]}"; do
+  if [[ ! -f "$f" ]]; then
+    echo "[preflight] missing required file: $f" >&2
+    exit 1
+  fi
+done
+
+echo "[preflight] checking package id and workflow variables..."
+rg -q "com\\.codemaxstudios\\.rift" "export_presets.cfg" || {
+  echo "[preflight] package id check failed in export_presets.cfg" >&2
+  exit 1
+}
+rg -q "GOOGLE_PLAY_PACKAGE_NAME" ".github/workflows/android-play-publish.yml" || {
+  echo "[preflight] GOOGLE_PLAY_PACKAGE_NAME missing in play publish workflow" >&2
+  exit 1
+}
+
+echo "[preflight] checking art pack manifests..."
+rg -q "assets/artpack" "docs/ART_PACK_MANIFEST.md" || {
+  echo "[preflight] art pack manifest appears incomplete" >&2
+  exit 1
+}
+
+echo "[preflight] all checks passed."

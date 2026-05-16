@@ -146,3 +146,18 @@ Use these project templates to speed submission preparation:
 
 - `docs/PLAY_STORE_LISTING_TEMPLATE.md`
 - `docs/PRIVACY_POLICY_TEMPLATE.md`
+
+## 12) One-Command Preflight Check
+
+Before creating a release build, run:
+
+```bash
+./tools/preflight_release_check.sh
+```
+
+This verifies:
+
+- release docs/templates are present
+- workflow files required for APK/AAB/Play upload exist
+- package ID and Play workflow variable references
+- JSON config syntax validity
