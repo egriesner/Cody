@@ -41,6 +41,12 @@ Keep this keystore safe and backed up.
 
 ## 4) Build Artifacts
 
+Quick path for local APK generation:
+
+```bash
+./tools/build_apk.sh debug
+```
+
 ### Shareable test build (APK)
 
 - Use Android export preset path:
