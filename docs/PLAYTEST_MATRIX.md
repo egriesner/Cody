@@ -16,6 +16,7 @@ Use this matrix before external tester distribution.
 4. End run by defeat (life depletion)
 5. Pause -> Save & Return -> Continue
 6. End panel -> Restart run
+7. Claim daily reward -> close/reopen app -> claim lockout same day
 
 ## Control Validation
 
@@ -39,10 +40,13 @@ Use this matrix before external tester distribution.
 - Profile totals update after each run.
 - Meta XP and level carry between sessions.
 - Continue snapshot restores objectives/inventory correctly.
+- Auto-checkpoint during active run updates continue data without manual save.
 - Settings persistence:
   - difficulty
   - vibration
   - hit flash
+  - UI scale
+  - high contrast mode
   - volume value
 
 ## Stability Checks

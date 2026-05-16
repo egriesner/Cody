@@ -56,9 +56,11 @@ Developer/Studio: **Code Max Studios**
 - Daily-style objective tracker with XP rewards
 - Leveling + progression stats + bestiary page tracking
 - Main menu with profile summary and continue support
-- Settings panel (difficulty, vibration toggle, master volume value)
+- Settings panel (difficulty, vibration/hit flash toggles, UI scale, high-contrast mode)
 - First-run guided onboarding tutorial with replay toggle from settings
 - Feedback hooks for event flash + vibration and future SFX assets
+- Daily reward claim loop with profile streak tracking
+- Auto-checkpoint continue snapshots during active runs
 - Overlord Vex boss phase unlock after progression gates
 - Victory/defeat flow with run summary panel
 - Profile save/continue persistence via `user://rift_profile.json`

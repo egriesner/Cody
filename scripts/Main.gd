@@ -13,9 +13,12 @@ var status_label: Label
 var menu_panel: Panel
 var settings_panel: Panel
 var continue_button: Button
+var daily_reward_button: Button
 var settings_volume_slider: HSlider
 var settings_vibration_toggle: CheckButton
 var settings_hit_flash_toggle: CheckButton
+var settings_ui_scale_slider: HSlider
+var settings_high_contrast_toggle: CheckButton
 var difficulty_option: OptionButton
 
 
@@ -83,6 +86,13 @@ func _build_menu_ui() -> void:
 	continue_button.pressed.connect(_on_continue_pressed)
 	menu_panel.add_child(continue_button)
 
+	daily_reward_button = Button.new()
+	daily_reward_button.text = "Claim Daily Reward"
+	daily_reward_button.position = Vector2(365, 436)
+	daily_reward_button.size = Vector2(250, 50)
+	daily_reward_button.pressed.connect(_on_claim_daily_reward_pressed)
+	menu_panel.add_child(daily_reward_button)
+
 	var settings_button := Button.new()
 	settings_button.text = "Settings"
 	settings_button.position = Vector2(640, 360)
@@ -91,14 +101,14 @@ func _build_menu_ui() -> void:
 	menu_panel.add_child(settings_button)
 
 	var docs_label := Label.new()
-	docs_label.position = Vector2(62, 442)
+	docs_label.position = Vector2(62, 500)
 	docs_label.size = Vector2(860, 56)
 	docs_label.text = "Run flow: Explore -> Wave combat -> Craft -> Bestiary pages -> Overlord Vex -> Rift Weaver ending"
 	docs_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	menu_panel.add_child(docs_label)
 
 	var studio_label := Label.new()
-	studio_label.position = Vector2(62, 548)
+	studio_label.position = Vector2(62, 586)
 	studio_label.size = Vector2(860, 30)
 	studio_label.text = "Developer: Code Max Studios"
 	menu_panel.add_child(studio_label)
@@ -142,14 +152,32 @@ func _build_settings_panel() -> void:
 	settings_hit_flash_toggle.position = Vector2(300, 158)
 	settings_panel.add_child(settings_hit_flash_toggle)
 
+	var ui_scale_label := Label.new()
+	ui_scale_label.text = "UI Scale"
+	ui_scale_label.position = Vector2(60, 194)
+	settings_panel.add_child(ui_scale_label)
+
+	settings_ui_scale_slider = HSlider.new()
+	settings_ui_scale_slider.position = Vector2(230, 190)
+	settings_ui_scale_slider.size = Vector2(320, 30)
+	settings_ui_scale_slider.min_value = 0.8
+	settings_ui_scale_slider.max_value = 1.3
+	settings_ui_scale_slider.step = 0.01
+	settings_panel.add_child(settings_ui_scale_slider)
+
+	settings_high_contrast_toggle = CheckButton.new()
+	settings_high_contrast_toggle.text = "High Contrast UI"
+	settings_high_contrast_toggle.position = Vector2(60, 228)
+	settings_panel.add_child(settings_high_contrast_toggle)
+
 	var difficulty_label := Label.new()
 	difficulty_label.text = "Difficulty"
-	difficulty_label.position = Vector2(60, 216)
+	difficulty_label.position = Vector2(300, 228)
 	settings_panel.add_child(difficulty_label)
 
 	difficulty_option = OptionButton.new()
-	difficulty_option.position = Vector2(230, 210)
-	difficulty_option.size = Vector2(220, 36)
+	difficulty_option.position = Vector2(410, 222)
+	difficulty_option.size = Vector2(140, 36)
 	difficulty_option.add_item("Easy", 0)
 	difficulty_option.add_item("Normal", 1)
 	difficulty_option.add_item("Hard", 2)
@@ -157,21 +185,21 @@ func _build_settings_panel() -> void:
 
 	var save_button := Button.new()
 	save_button.text = "Save Settings"
-	save_button.position = Vector2(96, 314)
+	save_button.position = Vector2(96, 304)
 	save_button.size = Vector2(200, 54)
 	save_button.pressed.connect(_on_save_settings_pressed)
 	settings_panel.add_child(save_button)
 
 	var close_button := Button.new()
 	close_button.text = "Close"
-	close_button.position = Vector2(328, 314)
+	close_button.position = Vector2(328, 304)
 	close_button.size = Vector2(200, 54)
 	close_button.pressed.connect(_on_close_settings_pressed)
 	settings_panel.add_child(close_button)
 
 	var replay_tutorial_button := Button.new()
 	replay_tutorial_button.text = "Replay Tutorial Next Run"
-	replay_tutorial_button.position = Vector2(172, 378)
+	replay_tutorial_button.position = Vector2(172, 366)
 	replay_tutorial_button.size = Vector2(276, 40)
 	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
 	settings_panel.add_child(replay_tutorial_button)
@@ -182,6 +210,8 @@ func _refresh_menu() -> void:
 	settings_volume_slider.value = float(settings.get("master_volume", 0.85))
 	settings_vibration_toggle.button_pressed = bool(settings.get("vibration", true))
 	settings_hit_flash_toggle.button_pressed = bool(settings.get("show_hit_flash", true))
+	settings_ui_scale_slider.value = float(settings.get("ui_scale", 1.0))
+	settings_high_contrast_toggle.button_pressed = bool(settings.get("high_contrast", false))
 	var difficulty := String(settings.get("difficulty", "normal"))
 	match difficulty:
 		"easy":
@@ -192,6 +222,12 @@ func _refresh_menu() -> void:
 			difficulty_option.select(1)
 
 	continue_button.disabled = not bool(profile.get("has_continue_snapshot", false))
+	var reward_claimed_today := String(profile.get("last_daily_reward_date", "")) == SAVE_MANAGER_SCRIPT.today_stamp()
+	daily_reward_button.disabled = reward_claimed_today
+	if reward_claimed_today:
+		daily_reward_button.text = "Reward Claimed Today"
+	else:
+		daily_reward_button.text = "Claim Daily Reward (Streak %d)" % int(profile.get("daily_streak", 0))
 	profile_label.text = "Meta Lv %d (%d XP) | Runs: %d | Wins: %d | Best Wave: %d | Drones Defeated: %d | Bestiary Pages: %d" % [
 		int(profile.get("meta_level", 1)),
 		int(profile.get("meta_xp", 0)),
@@ -202,7 +238,7 @@ func _refresh_menu() -> void:
 		int(profile.get("total_bestiary_pages", 0))
 	]
 	if bool(profile.get("tutorial_completed", false)):
-		status_label.text = "Ready for deployment builds and Play Store progression testing."
+		status_label.text = "Ready for deployment builds and Play Store progression testing. Daily streak: %d" % int(profile.get("daily_streak", 0))
 	else:
 		status_label.text = "Tutorial pending: first run will open guided onboarding."
 
@@ -218,6 +254,7 @@ func _launch_runtime(use_continue_snapshot: bool) -> void:
 	profile = runtime_profile
 	runtime.set_profile(runtime_profile)
 	runtime.session_finished.connect(_on_runtime_session_finished)
+	runtime.checkpoint_updated.connect(_on_runtime_checkpoint_updated)
 	active_runtime = runtime
 	add_child(runtime)
 	menu_panel.visible = false
@@ -259,6 +296,8 @@ func _on_save_settings_pressed() -> void:
 	settings["master_volume"] = settings_volume_slider.value
 	settings["vibration"] = settings_vibration_toggle.button_pressed
 	settings["show_hit_flash"] = settings_hit_flash_toggle.button_pressed
+	settings["ui_scale"] = settings_ui_scale_slider.value
+	settings["high_contrast"] = settings_high_contrast_toggle.button_pressed
 	match difficulty_option.selected:
 		0:
 			settings["difficulty"] = "easy"
@@ -280,3 +319,24 @@ func _on_replay_tutorial_pressed() -> void:
 	_save_profile()
 	_refresh_menu()
 	status_label.text = "Tutorial will appear on the next run."
+
+
+func _on_runtime_checkpoint_updated(snapshot: Dictionary) -> void:
+	profile = SAVE_MANAGER_SCRIPT.update_continue_snapshot(profile, snapshot)
+	_save_profile()
+
+
+func _on_claim_daily_reward_pressed() -> void:
+	var result: Dictionary = SAVE_MANAGER_SCRIPT.claim_daily_reward(profile)
+	profile = result.get("profile", profile)
+	_save_profile()
+	_refresh_menu()
+	if bool(result.get("rewarded", false)):
+		status_label.text = "Daily reward claimed: +%d scrap, +%d crystals, +%d meta XP (streak %d)." % [
+			int(result.get("scrap", 0)),
+			int(result.get("crystal", 0)),
+			int(result.get("meta_xp", 0)),
+			int(result.get("streak", 0))
+		]
+	else:
+		status_label.text = String(result.get("message", "Daily reward unavailable."))

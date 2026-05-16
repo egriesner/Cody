@@ -10,6 +10,8 @@ static func default_profile() -> Dictionary:
 		"profile_version": 1,
 		"player_name": "Cody Max",
 		"tutorial_completed": false,
+		"daily_streak": 0,
+		"last_daily_reward_date": "",
 		"meta_level": 1,
 		"meta_xp": 0,
 		"total_runs": 0,
@@ -27,7 +29,9 @@ static func default_profile() -> Dictionary:
 			"master_volume": 0.85,
 			"vibration": true,
 			"difficulty": "normal",
-			"show_hit_flash": true
+			"show_hit_flash": true,
+			"ui_scale": 1.0,
+			"high_contrast": false
 		},
 		"has_continue_snapshot": false,
 		"continue_snapshot": {}
@@ -106,6 +110,53 @@ static func clear_continue_snapshot(profile: Dictionary) -> Dictionary:
 	return updated
 
 
+static func update_continue_snapshot(profile: Dictionary, snapshot: Dictionary) -> Dictionary:
+	var updated := default_profile()
+	_merge_dict(updated, profile)
+	if typeof(snapshot) == TYPE_DICTIONARY and not snapshot.is_empty():
+		updated["has_continue_snapshot"] = true
+		updated["continue_snapshot"] = snapshot
+	return updated
+
+
+static func claim_daily_reward(profile: Dictionary) -> Dictionary:
+	var updated := default_profile()
+	_merge_dict(updated, profile)
+
+	var today := _today_stamp()
+	var last_claim := String(updated.get("last_daily_reward_date", ""))
+	if today == last_claim:
+		return {
+			"profile": updated,
+			"rewarded": false,
+			"message": "Daily reward already claimed today."
+		}
+
+	var streak := int(updated.get("daily_streak", 0)) + 1
+	updated["daily_streak"] = streak
+	updated["last_daily_reward_date"] = today
+
+	var scrap_reward := 10 + streak * 2
+	var crystal_reward := 4 + int(streak / 2)
+	var meta_xp_reward := 20 + streak * 3
+
+	var bank: Dictionary = updated.get("resources_bank", {})
+	bank["human_scrap"] = int(bank.get("human_scrap", 0)) + scrap_reward
+	bank["alien_crystals"] = int(bank.get("alien_crystals", 0)) + crystal_reward
+	updated["resources_bank"] = bank
+	_apply_meta_xp(updated, meta_xp_reward)
+
+	return {
+		"profile": updated,
+		"rewarded": true,
+		"scrap": scrap_reward,
+		"crystal": crystal_reward,
+		"meta_xp": meta_xp_reward,
+		"streak": streak,
+		"message": "Daily reward claimed."
+	}
+
+
 static func _apply_meta_xp(profile: Dictionary, gained_xp: int) -> void:
 	var xp := int(profile.get("meta_xp", 0)) + maxi(gained_xp, 0)
 	var level := int(profile.get("meta_level", 1))
@@ -120,6 +171,15 @@ static func _apply_meta_xp(profile: Dictionary, gained_xp: int) -> void:
 
 static func _meta_level_cost(level: int) -> int:
 	return 90 + (level * 35)
+
+
+static func today_stamp() -> String:
+	return _today_stamp()
+
+
+static func _today_stamp() -> String:
+	var d := Time.get_date_dict_from_system()
+	return "%04d-%02d-%02d" % [int(d.get("year", 1970)), int(d.get("month", 1)), int(d.get("day", 1))]
 
 
 static func _merge_dict(base: Dictionary, incoming: Dictionary) -> void:

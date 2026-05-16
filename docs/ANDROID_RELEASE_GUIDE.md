@@ -82,6 +82,9 @@ Before production store submission, verify:
 7. No soft lock when pausing/resuming or ending a run.
 8. First-run tutorial appears for new profiles and can be skipped/replayed.
 9. Feedback hooks work on device: hit flash, vibration, and no visual spam.
+10. Daily reward claims once per day and streak value increments.
+11. Mid-run auto-checkpoint restores correctly when continuing.
+12. UI scale and high-contrast settings persist and apply in runtime.
 
 ## 8) Branding
 

@@ -2,6 +2,7 @@ extends Node2D
 class_name GameRuntime
 
 signal session_finished(victory: bool, summary: Dictionary)
+signal checkpoint_updated(snapshot: Dictionary)
 const FEEDBACK_BUS_SCRIPT := preload("res://scripts/FeedbackBus.gd")
 
 enum PlayerState {
@@ -25,6 +26,7 @@ var profile: Dictionary = {}
 var config: Dictionary = {}
 
 var run_elapsed_seconds := 0.0
+var checkpoint_emit_tick := 0.0
 var game_ended := false
 var is_soft_paused := false
 var pending_result: Dictionary = {}
@@ -199,6 +201,8 @@ var feedback_bus: FeedbackBus
 var feedback_overlay: ColorRect
 var feedback_flash_alpha := 0.0
 var feedback_flash_decay := 0.0
+var ui_scale := 1.0
+var high_contrast_mode := false
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -211,6 +215,7 @@ func _ready() -> void:
 	_apply_profile_bonuses()
 	_setup_feedback_bus()
 	_build_hud()
+	_apply_hud_visual_mode()
 	_recalculate_input_regions()
 	player_position = get_viewport_rect().size * 0.5
 	status_label.text = "Run started. Track, craft, survive."
@@ -284,6 +289,7 @@ func _process(delta: float) -> void:
 	_update_passive_scavenge(delta)
 	_update_enemy_contacts(delta)
 	_check_run_completion()
+	_update_checkpoint_emitter(delta)
 	_update_feedback_overlay(delta)
 	_update_hud()
 	queue_redraw()
@@ -291,9 +297,13 @@ func _process(delta: float) -> void:
 
 func _draw() -> void:
 	var screen_size := get_viewport_rect().size
-	draw_rect(Rect2(Vector2.ZERO, screen_size), Color("#0b1022"))
-	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, 0.18))
-	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, 0.18))
+	var bg_color := Color("#0b1022")
+	if high_contrast_mode:
+		bg_color = Color("#05070f")
+	draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
+	var dead_zone_alpha := 0.18 if not high_contrast_mode else 0.30
+	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
+	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
 	draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.08), true)
 	draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.08), true)
 	draw_rect(Rect2(0, 70, screen_size.x, 8), Color(0.26, 0.85, 1.0, 0.4))
@@ -412,6 +422,8 @@ func _apply_profile_bonuses() -> void:
 
 	var settings: Dictionary = profile.get("settings", {})
 	var difficulty := String(settings.get("difficulty", "normal"))
+	ui_scale = float(settings.get("ui_scale", 1.0))
+	high_contrast_mode = bool(settings.get("high_contrast", false))
 	if difficulty == "easy":
 		player_lives = 4
 		max_lives = 4
@@ -454,6 +466,21 @@ func _update_feedback_overlay(delta: float) -> void:
 		feedback_overlay.color.b,
 		feedback_flash_alpha
 	)
+
+
+func _apply_hud_visual_mode() -> void:
+	if hud_root == null:
+		return
+	var clamped_scale := clamp(ui_scale, 0.8, 1.3)
+	hud_root.scale = Vector2(clamped_scale, clamped_scale)
+	if high_contrast_mode:
+		status_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.55))
+		state_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
+		quest_label.add_theme_color_override("font_color", Color(0.90, 1.0, 1.0))
+	else:
+		status_label.remove_theme_color_override("font_color")
+		state_label.remove_theme_color_override("font_color")
+		quest_label.remove_theme_color_override("font_color")
 
 
 func _build_hud() -> void:
@@ -1390,6 +1417,16 @@ func _check_run_completion() -> void:
 	if not _can_unlock_super_beast():
 		return
 	_enter_boss_phase()
+
+
+func _update_checkpoint_emitter(delta: float) -> void:
+	checkpoint_emit_tick += delta
+	if checkpoint_emit_tick < 20.0:
+		return
+	checkpoint_emit_tick = 0.0
+	if game_ended:
+		return
+	checkpoint_updated.emit(_build_continue_snapshot())
 
 
 func _enter_boss_phase() -> void:
