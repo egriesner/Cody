@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="sky" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#1d1034"/>
+      <stop offset="100%" stop-color="#260f2e"/>
+    </linearGradient>
+    <radialGradient id="crater" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#59f4ff" stop-opacity="0.42"/>
+      <stop offset="100%" stop-color="#59f4ff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <circle cx="960" cy="570" r="420" fill="#1f254d"/>
+  <circle cx="960" cy="570" r="320" fill="url(#crater)"/>
+  <circle cx="960" cy="570" r="220" fill="#15385a" opacity="0.35"/>
+  <g stroke="#78f8ff" stroke-width="6" opacity="0.58">
+    <line x1="784" y1="512" x2="680" y2="450"/>
+    <line x1="1136" y1="512" x2="1240" y2="448"/>
+    <line x1="804" y1="690" x2="720" y2="764"/>
+    <line x1="1118" y1="692" x2="1220" y2="770"/>
+  </g>
+  <g fill="#a57dff" opacity="0.35">
+    <circle cx="280" cy="230" r="140"/>
+    <circle cx="1660" cy="280" r="170"/>
+  </g>
+  <rect x="0" y="902" width="1920" height="178" fill="#171a3e"/>
+</svg>

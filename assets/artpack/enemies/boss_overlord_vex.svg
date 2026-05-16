@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="320" height="320" viewBox="0 0 320 320">
+  <defs>
+    <radialGradient id="core" cx="50%" cy="52%" r="50%">
+      <stop offset="0%" stop-color="#ff8fb3"/>
+      <stop offset="100%" stop-color="#a62650"/>
+    </radialGradient>
+    <linearGradient id="armor" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6f77ff"/>
+      <stop offset="100%" stop-color="#4a1848"/>
+    </linearGradient>
+  </defs>
+  <circle cx="160" cy="160" r="142" fill="#2e1433" opacity="0.36"/>
+  <path d="M92 264 L112 98 L208 98 L228 264 Z" fill="url(#armor)" stroke="#efb6ff" stroke-width="4"/>
+  <path d="M124 98 L140 54 L180 54 L196 98 Z" fill="#ffb1cd" stroke="#ffd5e6" stroke-width="4"/>
+  <ellipse cx="160" cy="146" rx="42" ry="34" fill="url(#core)" stroke="#ffd5e2" stroke-width="4"/>
+  <circle cx="146" cy="142" r="8" fill="#2e0f24"/>
+  <circle cx="174" cy="142" r="8" fill="#2e0f24"/>
+  <path d="M144 162 C152 172 168 172 176 162" fill="none" stroke="#3b0f2d" stroke-width="5" stroke-linecap="round"/>
+  <path d="M66 116 L114 128 L108 156 L58 144 Z" fill="#712a55" stroke="#ffc4df" stroke-width="4"/>
+  <path d="M254 116 L206 128 L212 156 L262 144 Z" fill="#712a55" stroke="#ffc4df" stroke-width="4"/>
+  <path d="M116 264 L98 302 M204 264 L222 302" stroke="#9b5ca4" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="98" cy="302" r="14" fill="#5d2a62"/>
+  <circle cx="222" cy="302" r="14" fill="#5d2a62"/>
+  <circle cx="160" cy="160" r="124" fill="none" stroke="#ff82b8" stroke-width="3" opacity="0.5"/>
+</svg>

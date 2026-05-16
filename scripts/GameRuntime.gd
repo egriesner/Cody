@@ -23,6 +23,16 @@ const INVALID_TOUCH_ID := -1
 const MOUSE_TOUCH_ID := 9001
 const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
 const ICON_PATH := "res://assets/icon.svg"
+const PLAYER_SKIN_PATH := "res://assets/artpack/skins/player_cody.svg"
+const ENEMY_DRONE_PATH := "res://assets/artpack/enemies/drone.svg"
+const ENEMY_BRUTE_PATH := "res://assets/artpack/enemies/brute.svg"
+const ENEMY_SPITTER_PATH := "res://assets/artpack/enemies/spitter.svg"
+const BOSS_OVERLORD_PATH := "res://assets/artpack/enemies/boss_overlord_vex.svg"
+const BIOME_BG_PATHS := [
+	"res://assets/artpack/backgrounds/biome_scrap_dunes.svg",
+	"res://assets/artpack/backgrounds/biome_whispering_archives.svg",
+	"res://assets/artpack/backgrounds/biome_plasma_crater.svg"
+]
 
 var profile: Dictionary = {}
 var config: Dictionary = {}
@@ -209,7 +219,11 @@ var ui_scale := 1.0
 var high_contrast_mode := false
 var concept_bg_texture: Texture2D
 var player_sprite_texture: Texture2D
-var enemy_sprite_texture: Texture2D
+var enemy_drone_texture: Texture2D
+var enemy_brute_texture: Texture2D
+var enemy_spitter_texture: Texture2D
+var boss_sprite_texture: Texture2D
+var biome_bg_textures: Array = []
 var top_hud_panel: Panel
 var bottom_hud_panel: Panel
 
@@ -248,9 +262,46 @@ func _ready() -> void:
 func _load_visual_assets() -> void:
 	if ResourceLoader.exists(CONCEPT_BG_PATH):
 		concept_bg_texture = load(CONCEPT_BG_PATH) as Texture2D
-	if ResourceLoader.exists(ICON_PATH):
+	player_sprite_texture = _load_texture_if_exists(PLAYER_SKIN_PATH)
+	if player_sprite_texture == null and ResourceLoader.exists(ICON_PATH):
 		player_sprite_texture = load(ICON_PATH) as Texture2D
-		enemy_sprite_texture = player_sprite_texture
+
+	enemy_drone_texture = _load_texture_if_exists(ENEMY_DRONE_PATH)
+	enemy_brute_texture = _load_texture_if_exists(ENEMY_BRUTE_PATH)
+	enemy_spitter_texture = _load_texture_if_exists(ENEMY_SPITTER_PATH)
+	boss_sprite_texture = _load_texture_if_exists(BOSS_OVERLORD_PATH)
+
+	if enemy_drone_texture == null:
+		enemy_drone_texture = player_sprite_texture
+	if enemy_brute_texture == null:
+		enemy_brute_texture = enemy_drone_texture
+	if enemy_spitter_texture == null:
+		enemy_spitter_texture = enemy_drone_texture
+	if boss_sprite_texture == null:
+		boss_sprite_texture = enemy_brute_texture
+
+	biome_bg_textures.clear()
+	for path in BIOME_BG_PATHS:
+		var biome_texture := _load_texture_if_exists(path)
+		if biome_texture == null:
+			biome_texture = concept_bg_texture
+		biome_bg_textures.append(biome_texture)
+
+
+func _load_texture_if_exists(path: String) -> Texture2D:
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+
+func _texture_for_enemy_type(enemy_type: String) -> Texture2D:
+	match enemy_type:
+		"brute":
+			return enemy_brute_texture
+		"spitter":
+			return enemy_spitter_texture
+		_:
+			return enemy_drone_texture
 
 
 func _notification(what: int) -> void:
@@ -319,7 +370,16 @@ func _draw() -> void:
 	var pulse := 0.70 + 0.30 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 420.0))
 	if high_contrast_mode:
 		bg_color = Color("#05070f")
-	if concept_bg_texture != null:
+
+	var biome_texture: Texture2D = null
+	if current_biome_index >= 0 and current_biome_index < biome_bg_textures.size():
+		biome_texture = biome_bg_textures[current_biome_index]
+	if biome_texture != null:
+		draw_texture_rect(biome_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.90))
+		if concept_bg_texture != null:
+			draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.14))
+		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.44))
+	elif concept_bg_texture != null:
 		draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.42))
 		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.60))
 	else:
@@ -349,7 +409,7 @@ func _draw() -> void:
 		draw_circle(player_position, 56, Color(0.42, 0.49, 1.0, 0.35))
 		draw_circle(player_position, 76, Color(0.33, 0.82, 1.0, 0.2))
 	if player_sprite_texture != null:
-		var player_size := Vector2(76, 76)
+		var player_size := Vector2(96, 96)
 		draw_texture_rect(player_sprite_texture, Rect2(player_position - player_size * 0.5, player_size), false, player_color)
 	else:
 		draw_circle(player_position, 30, player_color)
@@ -365,9 +425,12 @@ func _draw() -> void:
 			enemy_color = Color("#ff8f89")
 		elif enemy_type == "spitter":
 			enemy_color = Color("#8fffb4")
-		if enemy_sprite_texture != null:
-			var enemy_size := Vector2(36, 36)
-			draw_texture_rect(enemy_sprite_texture, Rect2(enemy_position - enemy_size * 0.5, enemy_size), false, enemy_color)
+		var enemy_texture := _texture_for_enemy_type(enemy_type)
+		if enemy_texture != null:
+			var enemy_size := Vector2(50, 50)
+			if enemy_type == "brute":
+				enemy_size = Vector2(62, 62)
+			draw_texture_rect(enemy_texture, Rect2(enemy_position - enemy_size * 0.5, enemy_size), false, enemy_color)
 		else:
 			draw_circle(enemy_position, 16, enemy_color)
 		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
@@ -376,9 +439,9 @@ func _draw() -> void:
 
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
-		if enemy_sprite_texture != null:
-			var boss_size := Vector2(108, 108)
-			draw_texture_rect(enemy_sprite_texture, Rect2(boss_position - boss_size * 0.5, boss_size), false, Color("#ff6f95"))
+		if boss_sprite_texture != null:
+			var boss_size := Vector2(136, 136)
+			draw_texture_rect(boss_sprite_texture, Rect2(boss_position - boss_size * 0.5, boss_size), false, Color("#ff6f95"))
 		else:
 			draw_circle(boss_position, 46, Color("#ff6f95"))
 		draw_circle(boss_position, 66, Color(0.9, 0.2, 0.4, 0.18))

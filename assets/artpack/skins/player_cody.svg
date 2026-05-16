@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="aura" cx="50%" cy="50%" r="52%">
+      <stop offset="0%" stop-color="#86f8ff" stop-opacity="0.88"/>
+      <stop offset="100%" stop-color="#86f8ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="armor" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#4dd2ff"/>
+      <stop offset="100%" stop-color="#6a7dff"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#273457"/>
+      <stop offset="100%" stop-color="#141f3d"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" fill="none"/>
+  <circle cx="128" cy="128" r="112" fill="url(#aura)"/>
+  <ellipse cx="128" cy="224" rx="62" ry="14" fill="#081225" opacity="0.7"/>
+  <path d="M84 202 L98 112 L158 112 L172 202 Z" fill="url(#coat)" stroke="#70e8ff" stroke-width="3"/>
+  <path d="M100 124 L128 96 L156 124 L148 182 L108 182 Z" fill="url(#armor)" stroke="#dcfbff" stroke-width="3"/>
+  <rect x="116" y="130" width="24" height="34" rx="7" fill="#87fbff"/>
+  <circle cx="128" cy="74" r="30" fill="#f6b87d" stroke="#ffd5a6" stroke-width="3"/>
+  <path d="M96 74 C102 46 150 44 160 72 C152 52 104 54 96 74 Z" fill="#6b4b30"/>
+  <circle cx="116" cy="74" r="4" fill="#223"/>
+  <circle cx="140" cy="74" r="4" fill="#223"/>
+  <path d="M116 88 C122 94 134 94 140 88" fill="none" stroke="#9f4d42" stroke-width="3" stroke-linecap="round"/>
+  <path d="M76 144 L116 150 L118 170 L76 164 Z" fill="#20375e" stroke="#74e9ff" stroke-width="3"/>
+  <path d="M180 136 L146 146 L146 170 L180 160 Z" fill="#20375e" stroke="#74e9ff" stroke-width="3"/>
+  <path d="M168 104 L206 126 L166 148 Z" fill="#5a6cff" stroke="#c2d2ff" stroke-width="3"/>
+  <path d="M176 127 L200 127" stroke="#9ef7ff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M102 204 L88 238 M154 204 L168 238" stroke="#5b79b8" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="88" cy="238" r="10" fill="#253d68"/>
+  <circle cx="168" cy="238" r="10" fill="#253d68"/>
+</svg>
