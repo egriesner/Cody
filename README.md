@@ -69,6 +69,8 @@ Developer/Studio: **Code Max Studios**
 
 See `docs/ANDROID_RELEASE_GUIDE.md` for keystore setup, export steps, sharing APKs, and Play Store app bundle publishing.
 Use `docs/PLAYTEST_MATRIX.md` as the final QA checklist before external tester rollout.
-Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK build commands.
+Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK and AAB build commands.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
+GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.
 GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.
+Play Store upload workflow scaffold is available at `.github/workflows/android-play-publish.yml`.

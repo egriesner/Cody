@@ -61,12 +61,15 @@ Quick path for local APK generation:
 
 - In Android preset, enable app bundle export.
 - Export `.aab` for Play Console upload.
+- CLI shortcut:
+  - `./tools/build_aab.sh`
 
 ## 5) Play Store Readiness Checklist
 
 - Landscape screenshots from real tablet gameplay.
 - Feature graphic and icon.
 - Privacy policy URL.
+- Increment `version/code` for every new upload.
 - Target API level matching current Play requirements.
 - Content rating questionnaire completed.
 - Internal testing track first, then closed/open, then production.
@@ -112,3 +115,26 @@ Tune these sections in `android_ui_state_config.json` for release balancing:
 - `runGoals`: boss unlock gates
 - `boss`: encounter durability and damage
 - `tutorial`: onboarding steps and skip behavior
+
+## 10) CI Setup for Play Store Upload
+
+Workflow file:
+
+- `.github/workflows/android-play-publish.yml`
+
+Required repository variable:
+
+- `GOOGLE_PLAY_PACKAGE_NAME` (example: `com.codemaxstudios.rift`)
+
+Required repository secrets:
+
+- `GOOGLE_PLAY_SERVICE_ACCOUNT_JSON`
+- `ANDROID_KEYSTORE_BASE64` (base64 of your release keystore file)
+- `ANDROID_KEYSTORE_ALIAS`
+- `ANDROID_KEYSTORE_PASSWORD`
+
+Then run:
+
+- **Actions -> Android Play Store Publish -> Run workflow**
+- Select track (`internal`, `alpha`, `beta`, `production`)
+- Select release status (`completed`, `draft`, `inProgress`)

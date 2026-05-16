@@ -1,59 +1,27 @@
-name: Android Package Release
+name: Android AAB CI
 
 on:
   push:
     branches:
       - main
+      - cursor/**
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
-    inputs:
-      build_mode:
-        description: Build mode
-        required: true
-        default: release
-        type: choice
-        options:
-          - debug
-          - release
-      package_format:
-        description: Package format
-        required: true
-        default: aab
-        type: choice
-        options:
-          - aab
-          - apk
-      prerelease:
-        description: Mark release as prerelease
-        required: true
-        default: true
-        type: boolean
-      tag_name:
-        description: Optional custom tag name (leave empty for auto tag)
-        required: false
-        default: ""
-        type: string
 
 jobs:
-  build-and-release:
+  build-aab:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
     env:
       GODOT_VERSION: "4.4.1"
       GODOT_STATUS: "stable"
-      BUILD_MODE: ${{ github.event.inputs.build_mode || 'release' }}
-      PACKAGE_FORMAT: ${{ github.event.inputs.package_format || 'aab' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Validate package mode combination
-        run: |
-          if [ "${PACKAGE_FORMAT}" = "aab" ] && [ "${BUILD_MODE}" != "release" ]; then
-            echo "AAB requires release mode. Re-run with build_mode=release."
-            exit 1
-          fi
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -104,44 +72,21 @@ jobs:
             -keypass android \
             -dname "CN=Android Debug,O=Android,C=US"
 
-      - name: Build package
+      - name: Build AAB
         env:
           GODOT_BIN: godot4
+          PRESET_NAME: "Android AAB"
           INSTALL_ANDROID_BUILD_TEMPLATE: "1"
           GODOT_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/debug.keystore
           GODOT_ANDROID_KEYSTORE_USER: androiddebugkey
           GODOT_ANDROID_KEYSTORE_PASSWORD: android
         run: |
-          ./tools/build_apk.sh "${BUILD_MODE}" "${PACKAGE_FORMAT}"
+          ./tools/build_apk.sh release aab
 
-      - name: Compute release metadata
-        id: release_meta
-        run: |
-          SHORT_SHA="$(echo "$GITHUB_SHA" | cut -c1-7)"
-          DATE_TAG="$(date -u +%Y%m%d-%H%M)"
-          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
-            TAG="${{ github.event.inputs.tag_name }}"
-          else
-            TAG="${PACKAGE_FORMAT}-${DATE_TAG}-${SHORT_SHA}"
-          fi
-
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            PRERELEASE_VALUE="${{ github.event.inputs.prerelease }}"
-          else
-            PRERELEASE_VALUE="false"
-          fi
-
-          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
-          echo "name=RIFT ${PACKAGE_FORMAT^^} ${DATE_TAG} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
-          echo "prerelease=${PRERELEASE_VALUE}" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub release with package
-        uses: softprops/action-gh-release@v2
+      - name: Upload AAB artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ steps.release_meta.outputs.tag }}
-          name: ${{ steps.release_meta.outputs.name }}
-          prerelease: ${{ steps.release_meta.outputs.prerelease }}
-          generate_release_notes: true
-          files: |
-            build/*.apk
-            build/*.aab
+          name: rift-aab-release-${{ github.sha }}
+          path: build/*.aab
+          if-no-files-found: error
+          retention-days: 14
