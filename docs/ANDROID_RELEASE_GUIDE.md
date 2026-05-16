@@ -80,9 +80,22 @@ Before production store submission, verify:
 5. Profile stats update after each run (wins/runs/wave/pages).
 6. Android orientation stays landscape and touch controls remain accurate.
 7. No soft lock when pausing/resuming or ending a run.
+8. First-run tutorial appears for new profiles and can be skipped/replayed.
+9. Feedback hooks work on device: hit flash, vibration, and no visual spam.
 
 ## 8) Branding
 
 - Studio name in metadata: **Code Max Studios**
 - Suggested publisher title in Play Console:
   - `Code Max Studios`
+
+## 9) Balance and Tuning Entry Points
+
+Tune these sections in `android_ui_state_config.json` for release balancing:
+
+- `waveCombat`: pacing and pressure
+- `progression`: level curve and survivability growth
+- `crafting`: recipe costs and unlock levels
+- `runGoals`: boss unlock gates
+- `boss`: encounter durability and damage
+- `tutorial`: onboarding steps and skip behavior

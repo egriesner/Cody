@@ -15,6 +15,7 @@ var settings_panel: Panel
 var continue_button: Button
 var settings_volume_slider: HSlider
 var settings_vibration_toggle: CheckButton
+var settings_hit_flash_toggle: CheckButton
 var difficulty_option: OptionButton
 
 
@@ -136,6 +137,11 @@ func _build_settings_panel() -> void:
 	settings_vibration_toggle.position = Vector2(60, 158)
 	settings_panel.add_child(settings_vibration_toggle)
 
+	settings_hit_flash_toggle = CheckButton.new()
+	settings_hit_flash_toggle.text = "Enable Hit Flash"
+	settings_hit_flash_toggle.position = Vector2(300, 158)
+	settings_panel.add_child(settings_hit_flash_toggle)
+
 	var difficulty_label := Label.new()
 	difficulty_label.text = "Difficulty"
 	difficulty_label.position = Vector2(60, 216)
@@ -163,11 +169,19 @@ func _build_settings_panel() -> void:
 	close_button.pressed.connect(_on_close_settings_pressed)
 	settings_panel.add_child(close_button)
 
+	var replay_tutorial_button := Button.new()
+	replay_tutorial_button.text = "Replay Tutorial Next Run"
+	replay_tutorial_button.position = Vector2(172, 378)
+	replay_tutorial_button.size = Vector2(276, 40)
+	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
+	settings_panel.add_child(replay_tutorial_button)
+
 
 func _refresh_menu() -> void:
 	var settings: Dictionary = profile.get("settings", {})
 	settings_volume_slider.value = float(settings.get("master_volume", 0.85))
 	settings_vibration_toggle.button_pressed = bool(settings.get("vibration", true))
+	settings_hit_flash_toggle.button_pressed = bool(settings.get("show_hit_flash", true))
 	var difficulty := String(settings.get("difficulty", "normal"))
 	match difficulty:
 		"easy":
@@ -187,7 +201,10 @@ func _refresh_menu() -> void:
 		int(profile.get("total_drones_defeated", 0)),
 		int(profile.get("total_bestiary_pages", 0))
 	]
-	status_label.text = "Ready for deployment builds and Play Store progression testing."
+	if bool(profile.get("tutorial_completed", false)):
+		status_label.text = "Ready for deployment builds and Play Store progression testing."
+	else:
+		status_label.text = "Tutorial pending: first run will open guided onboarding."
 
 
 func _launch_runtime(use_continue_snapshot: bool) -> void:
@@ -241,6 +258,7 @@ func _on_save_settings_pressed() -> void:
 	var settings: Dictionary = profile.get("settings", {})
 	settings["master_volume"] = settings_volume_slider.value
 	settings["vibration"] = settings_vibration_toggle.button_pressed
+	settings["show_hit_flash"] = settings_hit_flash_toggle.button_pressed
 	match difficulty_option.selected:
 		0:
 			settings["difficulty"] = "easy"
@@ -255,3 +273,10 @@ func _on_save_settings_pressed() -> void:
 
 func _on_close_settings_pressed() -> void:
 	settings_panel.visible = false
+
+
+func _on_replay_tutorial_pressed() -> void:
+	profile["tutorial_completed"] = false
+	_save_profile()
+	_refresh_menu()
+	status_label.text = "Tutorial will appear on the next run."

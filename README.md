@@ -15,9 +15,11 @@ Developer/Studio: **Code Max Studios**
 - `scripts/Main.gd`
   - App controller (menu, settings, profile flow, new run/continue run).
 - `scripts/GameRuntime.gd`
-  - Full gameplay runtime: touch controls, survival loop, wave combat, companions, crafting, objectives, boss phase, and run completion states.
+  - Full gameplay runtime: touch controls, survival loop, wave combat, companions, crafting, objectives, onboarding tutorial, boss phase, and run completion states.
 - `scripts/SaveManager.gd`
   - Persistent profile storage and session result application (`user://rift_profile.json`).
+- `scripts/FeedbackBus.gd`
+  - Audio/vibration/flash feedback hook layer for gameplay events.
 - `assets/icon.svg`
   - Base app icon.
 - `export_presets.cfg`
@@ -55,6 +57,8 @@ Developer/Studio: **Code Max Studios**
 - Leveling + progression stats + bestiary page tracking
 - Main menu with profile summary and continue support
 - Settings panel (difficulty, vibration toggle, master volume value)
+- First-run guided onboarding tutorial with replay toggle from settings
+- Feedback hooks for event flash + vibration and future SFX assets
 - Overlord Vex boss phase unlock after progression gates
 - Victory/defeat flow with run summary panel
 - Profile save/continue persistence via `user://rift_profile.json`
@@ -62,3 +66,4 @@ Developer/Studio: **Code Max Studios**
 ## Android Release
 
 See `docs/ANDROID_RELEASE_GUIDE.md` for keystore setup, export steps, sharing APKs, and Play Store app bundle publishing.
+Use `docs/PLAYTEST_MATRIX.md` as the final QA checklist before external tester rollout.

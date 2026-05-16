@@ -9,6 +9,7 @@ static func default_profile() -> Dictionary:
 		"studio": "Code Max Studios",
 		"profile_version": 1,
 		"player_name": "Cody Max",
+		"tutorial_completed": false,
 		"meta_level": 1,
 		"meta_xp": 0,
 		"total_runs": 0,
@@ -25,7 +26,8 @@ static func default_profile() -> Dictionary:
 		"settings": {
 			"master_volume": 0.85,
 			"vibration": true,
-			"difficulty": "normal"
+			"difficulty": "normal",
+			"show_hit_flash": true
 		},
 		"has_continue_snapshot": false,
 		"continue_snapshot": {}
@@ -83,6 +85,7 @@ static func apply_session_result(profile: Dictionary, result: Dictionary) -> Dic
 
 	_apply_meta_xp(updated, int(result.get("meta_xp_gain", 0)))
 	updated["unlocked_skins"] = maxi(int(updated.get("unlocked_skins", 1)), int(result.get("skins_unlocked", 1)))
+	updated["tutorial_completed"] = bool(updated.get("tutorial_completed", false)) or bool(result.get("tutorial_completed", false))
 
 	var snapshot = result.get("continue_snapshot", {})
 	if typeof(snapshot) == TYPE_DICTIONARY and not snapshot.is_empty():

@@ -182,5 +182,20 @@
     "healthPerWave": 80,
     "contactDamage": 16,
     "shockwaveDamage": 18
+  },
+  "tutorial": {
+    "enabled": true,
+    "allowSkip": true,
+    "steps": [
+      "Move with the left stick. Aim and attack with the right stick.",
+      "Collect scrap, crystals, and food. Food restores energy with EAT mode.",
+      "Craft stronger weapons and complete objectives to progress quickly.",
+      "Activate Rhino Charge for burst damage and wall-breaking momentum.",
+      "Defeat Overlord Vex to complete the Rift Weaver finale."
+    ]
+  },
+  "feedback": {
+    "hitFlashEnabledDefault": true,
+    "vibrationEnabledDefault": true
   }
 }

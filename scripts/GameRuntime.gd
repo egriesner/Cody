@@ -2,6 +2,7 @@ extends Node2D
 class_name GameRuntime
 
 signal session_finished(victory: bool, summary: Dictionary)
+const FEEDBACK_BUS_SCRIPT := preload("res://scripts/FeedbackBus.gd")
 
 enum PlayerState {
 	NORMAL,
@@ -180,6 +181,24 @@ var pause_title: Label
 var end_panel: Panel
 var end_title: Label
 var end_subtitle: Label
+var tutorial_panel: Panel
+var tutorial_body: Label
+var tutorial_index := 0
+var tutorial_completed_this_session := false
+var tutorial_enabled := true
+var tutorial_allow_skip := true
+var tutorial_steps := [
+	"Move with the left stick. Aim and attack with the right stick.",
+	"Collect scrap, crystals, and food. Food restores energy when using EAT mode.",
+	"Craft stronger weapons and finish objectives to trigger the Titan Protocol.",
+	"Activate Rhino Charge for burst damage and wall-smashing momentum.",
+	"Defeat Overlord Vex to complete the Rift Weaver finale."
+]
+
+var feedback_bus: FeedbackBus
+var feedback_overlay: ColorRect
+var feedback_flash_alpha := 0.0
+var feedback_flash_decay := 0.0
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -190,6 +209,7 @@ func _ready() -> void:
 	randomize()
 	_load_config()
 	_apply_profile_bonuses()
+	_setup_feedback_bus()
 	_build_hud()
 	_recalculate_input_regions()
 	player_position = get_viewport_rect().size * 0.5
@@ -201,6 +221,11 @@ func _ready() -> void:
 		status_label.text = "Continue run loaded."
 	else:
 		_start_next_wave()
+
+	if tutorial_enabled and not bool(profile.get("tutorial_completed", false)):
+		_show_tutorial_step(0)
+	else:
+		tutorial_completed_this_session = true
 
 	_update_hud()
 
@@ -235,11 +260,13 @@ func _process(delta: float) -> void:
 		_recalculate_input_regions()
 
 	if game_ended:
+		_update_feedback_overlay(delta)
 		_update_hud()
 		queue_redraw()
 		return
 
 	if is_soft_paused:
+		_update_feedback_overlay(delta)
 		_update_hud()
 		queue_redraw()
 		return
@@ -257,6 +284,7 @@ func _process(delta: float) -> void:
 	_update_passive_scavenge(delta)
 	_update_enemy_contacts(delta)
 	_check_run_completion()
+	_update_feedback_overlay(delta)
 	_update_hud()
 	queue_redraw()
 
@@ -343,6 +371,16 @@ func _load_config() -> void:
 	boss_contact_damage = float(boss_config.get("contactDamage", boss_contact_damage))
 	boss_shockwave_damage = float(boss_config.get("shockwaveDamage", boss_shockwave_damage))
 
+	var tutorial_config: Dictionary = config.get("tutorial", {})
+	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
+	tutorial_allow_skip = bool(tutorial_config.get("allowSkip", tutorial_allow_skip))
+	var steps_override = tutorial_config.get("steps", [])
+	if typeof(steps_override) == TYPE_ARRAY and steps_override.size() > 0:
+		var converted: Array = []
+		for step in steps_override:
+			converted.append(String(step))
+		tutorial_steps = converted
+
 	var crafting: Dictionary = config.get("crafting", {})
 	var recipe_overrides = crafting.get("recipes", [])
 	if typeof(recipe_overrides) == TYPE_ARRAY:
@@ -380,6 +418,38 @@ func _apply_profile_bonuses() -> void:
 	elif difficulty == "hard":
 		player_lives = 2
 		max_lives = 2
+
+
+func _setup_feedback_bus() -> void:
+	feedback_bus = FEEDBACK_BUS_SCRIPT.new()
+	add_child(feedback_bus)
+	var settings: Dictionary = profile.get("settings", {})
+	var feedback_defaults: Dictionary = config.get("feedback", {})
+	if not settings.has("vibration"):
+		settings["vibration"] = bool(feedback_defaults.get("vibrationEnabledDefault", true))
+	if not settings.has("show_hit_flash"):
+		settings["show_hit_flash"] = bool(feedback_defaults.get("hitFlashEnabledDefault", true))
+	feedback_bus.configure_from_profile(settings)
+	feedback_bus.feedback_triggered.connect(_on_feedback_triggered)
+
+
+func _on_feedback_triggered(event_name: String, flash_color: Color, flash_duration: float) -> void:
+	feedback_overlay.color = flash_color
+	feedback_flash_alpha = flash_color.a
+	feedback_flash_decay = flash_color.a / max(flash_duration, 0.02)
+
+
+func _update_feedback_overlay(delta: float) -> void:
+	if feedback_flash_alpha <= 0.001:
+		feedback_overlay.color = Color(feedback_overlay.color.r, feedback_overlay.color.g, feedback_overlay.color.b, 0.0)
+		return
+	feedback_flash_alpha = max(0.0, feedback_flash_alpha - feedback_flash_decay * delta)
+	feedback_overlay.color = Color(
+		feedback_overlay.color.r,
+		feedback_overlay.color.g,
+		feedback_overlay.color.b,
+		feedback_flash_alpha
+	)
 
 
 func _build_hud() -> void:
@@ -584,8 +654,15 @@ func _build_hud() -> void:
 	right_stick_knob.visible = false
 	hud_root.add_child(right_stick_knob)
 
+	feedback_overlay = ColorRect.new()
+	feedback_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	feedback_overlay.color = Color(1, 1, 1, 0)
+	feedback_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(feedback_overlay)
+
 	_build_pause_panel()
 	_build_end_panel()
+	_build_tutorial_panel()
 	_on_hotbar_selected(selected_hotbar_index)
 
 
@@ -658,6 +735,41 @@ func _build_end_panel() -> void:
 	end_panel.add_child(menu_button)
 
 
+func _build_tutorial_panel() -> void:
+	tutorial_panel = Panel.new()
+	tutorial_panel.size = Vector2(760, 360)
+	tutorial_panel.position = Vector2(580, 300)
+	tutorial_panel.visible = false
+	hud_root.add_child(tutorial_panel)
+
+	var tutorial_title := Label.new()
+	tutorial_title.text = "MISSION BRIEFING"
+	tutorial_title.position = Vector2(214, 24)
+	tutorial_title.add_theme_font_size_override("font_size", 34)
+	tutorial_panel.add_child(tutorial_title)
+
+	tutorial_body = Label.new()
+	tutorial_body.position = Vector2(44, 92)
+	tutorial_body.size = Vector2(672, 130)
+	tutorial_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_panel.add_child(tutorial_body)
+
+	var next_button := Button.new()
+	next_button.text = "Next"
+	next_button.position = Vector2(152, 258)
+	next_button.size = Vector2(190, 52)
+	next_button.pressed.connect(_on_tutorial_next_pressed)
+	tutorial_panel.add_child(next_button)
+
+	var skip_button := Button.new()
+	skip_button.text = "Skip Tutorial"
+	skip_button.position = Vector2(418, 258)
+	skip_button.size = Vector2(190, 52)
+	skip_button.pressed.connect(_on_tutorial_skip_pressed)
+	skip_button.visible = tutorial_allow_skip
+	tutorial_panel.add_child(skip_button)
+
+
 func _recalculate_input_regions() -> void:
 	viewport_size = get_viewport_rect().size
 	var input_layout: Dictionary = config.get("inputLayout", {})
@@ -674,6 +786,8 @@ func _recalculate_input_regions() -> void:
 		pause_panel.position = (viewport_size - pause_panel.size) * 0.5
 	if end_panel:
 		end_panel.position = (viewport_size - end_panel.size) * 0.5
+	if tutorial_panel:
+		tutorial_panel.position = (viewport_size - tutorial_panel.size) * 0.5
 
 
 func _rect_from_norm(source: Dictionary, fallback: Rect2) -> Rect2:
@@ -820,6 +934,7 @@ func _update_combat(delta: float) -> void:
 
 func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 	attack_cooldown = 0.24
+	feedback_bus.emit_feedback("attack")
 	var attack_dir := facing if facing.length() > 0.2 else player_direction
 
 	if input_mode == InputMode.RHINO_BOOST_MODE:
@@ -1077,6 +1192,7 @@ func _update_enemy_contacts(delta: float) -> void:
 
 func _apply_player_damage(amount: float, source: String) -> void:
 	health = clamp(health - amount, 0.0, max_health)
+	feedback_bus.emit_feedback("hit")
 	status_label.text = "Hit by %s: -%.0f HP" % [source, amount]
 	if health > 0.0:
 		return
@@ -1192,6 +1308,7 @@ func _add_objective_progress(key: String, amount: int) -> void:
 			var reward := int(objective.get("reward_xp", 0))
 			_grant_xp(reward)
 			status_label.text = "Objective complete: %s (+%d XP)" % [objective.get("label", ""), reward]
+			feedback_bus.emit_feedback("objective")
 		objectives[i] = objective
 		break
 
@@ -1286,6 +1403,7 @@ func _enter_boss_phase() -> void:
 	boss_attack_tick = 1.0
 	player_state = PlayerState.SUPER_BEAST
 	status_label.text = "Titan Protocol complete. Overlord Vex engaged!"
+	feedback_bus.emit_feedback("boss")
 
 
 func _update_boss_system(delta: float) -> void:
@@ -1314,7 +1432,31 @@ func _on_boss_defeated() -> void:
 	boss_active = false
 	player_state = PlayerState.RIFT_WEAVER
 	status_label.text = "Overlord Vex defeated. Alpha Strain extracted."
+	feedback_bus.emit_feedback("objective")
 	_end_run(true, "Rift Weaver protocol stabilized the final rift home.")
+
+
+func _show_tutorial_step(step_index: int) -> void:
+	tutorial_index = step_index
+	if tutorial_index >= tutorial_steps.size():
+		tutorial_panel.visible = false
+		is_soft_paused = false
+		tutorial_completed_this_session = true
+		status_label.text = "Tutorial complete. Begin tracking Vexian signatures."
+		return
+
+	is_soft_paused = true
+	tutorial_panel.visible = true
+	tutorial_body.text = "Step %d/%d\n%s" % [tutorial_index + 1, tutorial_steps.size(), tutorial_steps[tutorial_index]]
+
+
+func _on_tutorial_next_pressed() -> void:
+	_show_tutorial_step(tutorial_index + 1)
+
+
+func _on_tutorial_skip_pressed() -> void:
+	tutorial_index = tutorial_steps.size()
+	_show_tutorial_step(tutorial_index)
 
 
 func _build_continue_snapshot() -> Dictionary:
@@ -1415,6 +1557,7 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"bank_scrap_gain": bank_scrap_gain,
 		"bank_crystal_gain": bank_crystal_gain,
 		"skins_unlocked": skins_unlocked,
+		"tutorial_completed": tutorial_completed_this_session or bool(profile.get("tutorial_completed", false)),
 		"continue_snapshot": snapshot
 	}
 
@@ -1435,8 +1578,15 @@ func _update_hud() -> void:
 	biome_label.text = "Biome: %s" % biome_names[current_biome_index]
 	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]
 	boss_label.text = "Boss: Overlord Vex engaged" if boss_active else "Boss: pending"
-	rhino_button.disabled = player_state == PlayerState.RHINO_CHARGE or game_ended
-	pause_button.disabled = game_ended
+	var input_locked := game_ended or tutorial_panel.visible
+	rhino_button.disabled = player_state == PlayerState.RHINO_CHARGE or input_locked
+	pause_button.disabled = game_ended or tutorial_panel.visible
+	travel_biome_button.disabled = input_locked
+	scavenge_button.disabled = input_locked
+	recipe_select.disabled = input_locked
+	craft_button.disabled = input_locked
+	gain_page_button.disabled = input_locked
+	action_button.disabled = input_locked
 
 	if player_state == PlayerState.RHINO_CHARGE:
 		rhino_timer_label.text = "Rhino timer: %.1fs" % rhino_time_left
@@ -1524,6 +1674,7 @@ func _on_rhino_pressed() -> void:
 	secret_walls_broken += randi_range(0, 2)
 	_add_objective_progress("rhino", 1)
 	status_label.text = "Rhino Charge activated!"
+	feedback_bus.emit_feedback("rhino")
 	_apply_hotbar_context_rules()
 
 
@@ -1572,6 +1723,7 @@ func _on_gain_page_pressed() -> void:
 	bestiary_pages += 1
 	pages_collected_this_run += 1
 	_grant_xp(12)
+	feedback_bus.emit_feedback("objective")
 	if _can_unlock_super_beast():
 		status_label.text = "Titan Protocol complete: Super Beast ready for Overlord arena."
 	else:
@@ -1580,6 +1732,8 @@ func _on_gain_page_pressed() -> void:
 
 func _on_pause_pressed() -> void:
 	if game_ended:
+		return
+	if tutorial_panel.visible:
 		return
 	is_soft_paused = true
 	pause_panel.visible = true
