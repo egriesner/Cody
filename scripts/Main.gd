@@ -2,6 +2,11 @@ extends Control
 
 const GAME_RUNTIME_SCRIPT := preload("res://scripts/GameRuntime.gd")
 const SAVE_MANAGER_SCRIPT := preload("res://scripts/SaveManager.gd")
+const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
+const PANEL_TOP_PATH := "res://assets/artpack/ui/hud_top_panel.svg"
+const PANEL_BOTTOM_PATH := "res://assets/artpack/ui/hud_bottom_panel.svg"
+const BUTTON_PRIMARY_PATH := "res://assets/artpack/ui/button_primary.svg"
+const BUTTON_SECONDARY_PATH := "res://assets/artpack/ui/button_secondary.svg"
 
 var profile: Dictionary = {}
 var active_runtime: GameRuntime
@@ -20,10 +25,16 @@ var settings_hit_flash_toggle: CheckButton
 var settings_ui_scale_slider: HSlider
 var settings_high_contrast_toggle: CheckButton
 var difficulty_option: OptionButton
+var concept_bg_texture: Texture2D
+var panel_top_texture: Texture2D
+var panel_bottom_texture: Texture2D
+var button_primary_texture: Texture2D
+var button_secondary_texture: Texture2D
 
 
 func _ready() -> void:
 	_load_profile()
+	_load_visual_assets()
 	_build_menu_ui()
 	_refresh_menu()
 
@@ -36,12 +47,36 @@ func _save_profile() -> void:
 	SAVE_MANAGER_SCRIPT.save_profile(profile)
 
 
+func _load_visual_assets() -> void:
+	concept_bg_texture = _load_texture_if_exists(CONCEPT_BG_PATH)
+	panel_top_texture = _load_texture_if_exists(PANEL_TOP_PATH)
+	panel_bottom_texture = _load_texture_if_exists(PANEL_BOTTOM_PATH)
+	button_primary_texture = _load_texture_if_exists(BUTTON_PRIMARY_PATH)
+	button_secondary_texture = _load_texture_if_exists(BUTTON_SECONDARY_PATH)
+
+
+func _load_texture_if_exists(path: String) -> Texture2D:
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+
 func _build_menu_ui() -> void:
 	set_anchors_preset(PRESET_FULL_RECT)
-	var bg := ColorRect.new()
-	bg.color = Color("#090d1a")
-	bg.set_anchors_preset(PRESET_FULL_RECT)
-	add_child(bg)
+	if concept_bg_texture != null:
+		var bg_texture := TextureRect.new()
+		bg_texture.texture = concept_bg_texture
+		bg_texture.set_anchors_preset(PRESET_FULL_RECT)
+		bg_texture.stretch_mode = TextureRect.STRETCH_SCALE
+		bg_texture.modulate = Color(1.0, 1.0, 1.0, 0.40)
+		bg_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(bg_texture)
+
+	var bg_overlay := ColorRect.new()
+	bg_overlay.color = Color(0.03, 0.07, 0.15, 0.88)
+	bg_overlay.set_anchors_preset(PRESET_FULL_RECT)
+	bg_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bg_overlay)
 
 	menu_panel = Panel.new()
 	menu_panel.size = Vector2(980, 640)
@@ -114,6 +149,7 @@ func _build_menu_ui() -> void:
 	menu_panel.add_child(studio_label)
 
 	_build_settings_panel()
+	_apply_menu_skin()
 
 
 func _build_settings_panel() -> void:
@@ -203,6 +239,81 @@ func _build_settings_panel() -> void:
 	replay_tutorial_button.size = Vector2(276, 40)
 	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
 	settings_panel.add_child(replay_tutorial_button)
+
+
+func _make_stylebox(bg: Color, border: Color, border_size: int = 2, radius: int = 12) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(border_size)
+	sb.set_corner_radius_all(radius)
+	return sb
+
+
+func _make_texture_stylebox(texture: Texture2D, margin: int = 14) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = texture
+	sb.texture_margin_left = margin
+	sb.texture_margin_top = margin
+	sb.texture_margin_right = margin
+	sb.texture_margin_bottom = margin
+	return sb
+
+
+func _style_button(button: Button, primary: bool = false) -> void:
+	button.add_theme_color_override("font_color", Color(0.90, 0.97, 1.0))
+	button.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	button.add_theme_font_size_override("font_size", 18)
+	if primary and button_primary_texture != null:
+		var primary_style := _make_texture_stylebox(button_primary_texture, 16)
+		button.add_theme_stylebox_override("normal", primary_style)
+		button.add_theme_stylebox_override("hover", primary_style)
+		button.add_theme_stylebox_override("pressed", primary_style)
+	elif button_secondary_texture != null:
+		var secondary_style := _make_texture_stylebox(button_secondary_texture, 10)
+		button.add_theme_stylebox_override("normal", secondary_style)
+		button.add_theme_stylebox_override("hover", secondary_style)
+		button.add_theme_stylebox_override("pressed", secondary_style)
+	else:
+		var fallback := _make_stylebox(Color(0.10, 0.19, 0.36, 0.86), Color(0.58, 0.42, 1.0, 0.95), 2, 12)
+		button.add_theme_stylebox_override("normal", fallback)
+		button.add_theme_stylebox_override("hover", fallback)
+		button.add_theme_stylebox_override("pressed", fallback)
+
+
+func _style_controls_recursive(root: Node) -> void:
+	for child in root.get_children():
+		if child is Label:
+			var label := child as Label
+			label.add_theme_color_override("font_color", Color(0.86, 0.97, 1.0))
+		elif child is Button:
+			_style_button(child as Button)
+		elif child is OptionButton:
+			_style_button(child as Button)
+		elif child is CheckButton:
+			_style_button(child as Button)
+		_style_controls_recursive(child)
+
+
+func _apply_menu_skin() -> void:
+	if menu_panel != null:
+		if panel_top_texture != null:
+			menu_panel.add_theme_stylebox_override("panel", _make_texture_stylebox(panel_top_texture, 14))
+		else:
+			menu_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.05, 0.10, 0.22, 0.94), Color(0.32, 0.84, 1.0, 0.9), 2, 16))
+	if settings_panel != null:
+		if panel_bottom_texture != null:
+			settings_panel.add_theme_stylebox_override("panel", _make_texture_stylebox(panel_bottom_texture, 14))
+		else:
+			settings_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.05, 0.10, 0.22, 0.94), Color(0.66, 0.44, 1.0, 0.9), 2, 16))
+
+	_style_controls_recursive(menu_panel)
+	_style_controls_recursive(settings_panel)
+	for child in menu_panel.get_children():
+		if child is Button:
+			var menu_button := child as Button
+			var is_primary := menu_button.text == "Start New Run"
+			_style_button(menu_button, is_primary)
 
 
 func _refresh_menu() -> void:

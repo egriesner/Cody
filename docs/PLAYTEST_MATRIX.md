@@ -23,6 +23,10 @@ Use this matrix before external tester distribution.
 - Left/right dead-zone rejection on both tablet sizes.
 - Dynamic left stick appears only in allowed zone.
 - Right drag aim and quick tap behavior remain responsive.
+- Dash button:
+  - triggers burst movement immediately
+  - enters cooldown and re-enables correctly
+  - grants brief damage-evade window during active dash frames
 - Hotbar context transitions:
   - weapon -> ATTACK
   - food -> EAT
@@ -40,6 +44,7 @@ Use this matrix before external tester distribution.
 - Profile totals update after each run.
 - Meta XP and level carry between sessions.
 - Continue snapshot restores objectives/inventory correctly.
+- Continue snapshot restores dash cooldown state correctly.
 - Auto-checkpoint during active run updates continue data without manual save.
 - Settings persistence:
   - difficulty
@@ -55,3 +60,5 @@ Use this matrix before external tester distribution.
 - No UI panel overlap that blocks gameplay input unexpectedly.
 - Boss phase transitions cleanly from wave phase.
 - Restart-from-end-panel does not corrupt profile data.
+- Spitter ranged projectiles spawn, despawn, and damage without stutter or leaked entities.
+- Combo multiplier UI updates in combat and cleanly resets after timeout/taking damage.

@@ -170,6 +170,21 @@ var rhino_time_left := 0.0
 var attack_cooldown := 0.0
 var companion_tick := 0.0
 var passive_scavenge_tick := 0.0
+var dash_cooldown_remaining := 0.0
+var dash_time_left := 0.0
+var dash_direction := Vector2.RIGHT
+var combo_streak := 0
+var combo_multiplier := 1.0
+var combo_decay_time_left := 0.0
+var max_combo_reached := 1.0
+var dash_uses_this_run := 0
+var enemy_projectiles: Array[Dictionary] = []
+var spitter_shot_tick := 0.0
+var dash_cooldown_seconds := 2.4
+var dash_duration_seconds := 0.22
+var combo_timeout_seconds := 4.0
+var spitter_projectile_speed := 420.0
+var spitter_projectile_damage := 8.0
 var biome_names := PackedStringArray(["Scrap Dunes", "Whispering Archives", "Plasma Crater"])
 var current_biome_index := 0
 
@@ -186,6 +201,8 @@ var state_label: Label
 var biome_label: Label
 var wave_label: Label
 var boss_label: Label
+var combo_label: Label
+var dash_label: Label
 var companion_label: Label
 var loot_label: Label
 var rhino_timer_label: Label
@@ -193,6 +210,7 @@ var inventory_label: Label
 var quest_label: Label
 var progression_label: Label
 var action_button: Button
+var dash_button: Button
 var rhino_button: Button
 var travel_biome_button: Button
 var hotbar_container: HBoxContainer
@@ -401,12 +419,14 @@ func _process(delta: float) -> void:
 
 	_update_survival(delta)
 	_update_player_state(delta)
+	_update_dash_and_combo(delta)
 	_apply_hotbar_context_rules()
 	_update_movement(delta)
 	_update_combat(delta)
 	_update_companion_logic(delta)
 	_update_wave_system(delta)
 	_update_boss_system(delta)
+	_update_enemy_projectiles(delta)
 	_update_passive_scavenge(delta)
 	_update_enemy_contacts(delta)
 	_check_run_completion()
@@ -460,6 +480,9 @@ func _draw() -> void:
 		player_color = Color("#8af7ff")
 		draw_circle(player_position, 56, Color(0.42, 0.49, 1.0, 0.35))
 		draw_circle(player_position, 76, Color(0.33, 0.82, 1.0, 0.2))
+	if dash_time_left > 0.0:
+		draw_circle(player_position, 64, Color(0.86, 0.96, 1.0, 0.24))
+		draw_circle(player_position, 84, Color(0.70, 0.88, 1.0, 0.16))
 	if player_sprite_texture != null:
 		var player_size := Vector2(96, 96)
 		draw_texture_rect(player_sprite_texture, Rect2(player_position - player_size * 0.5, player_size), false, player_color)
@@ -488,6 +511,13 @@ func _draw() -> void:
 		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 1))
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34 * hp_ratio, 4), Color("#69f2b0"))
+
+	for projectile in enemy_projectiles:
+		var projectile_position: Vector2 = projectile.get("position", Vector2.ZERO)
+		var projectile_velocity: Vector2 = projectile.get("velocity", Vector2.ZERO)
+		var tail := projectile_position - projectile_velocity.normalized() * 18.0
+		draw_line(tail, projectile_position, Color(0.46, 1.0, 0.88, 0.75), 4.0)
+		draw_circle(projectile_position, 8.0, Color(0.58, 1.0, 0.90, 0.94))
 
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
@@ -543,6 +573,13 @@ func _load_config() -> void:
 	boss_health_per_wave = float(boss_config.get("healthPerWave", boss_health_per_wave))
 	boss_contact_damage = float(boss_config.get("contactDamage", boss_contact_damage))
 	boss_shockwave_damage = float(boss_config.get("shockwaveDamage", boss_shockwave_damage))
+
+	var combat_polish: Dictionary = config.get("combatPolish", {})
+	dash_cooldown_seconds = float(combat_polish.get("dashCooldownSeconds", dash_cooldown_seconds))
+	dash_duration_seconds = float(combat_polish.get("dashDurationSeconds", dash_duration_seconds))
+	combo_timeout_seconds = float(combat_polish.get("comboTimeoutSeconds", combo_timeout_seconds))
+	spitter_projectile_speed = float(combat_polish.get("spitterProjectileSpeed", spitter_projectile_speed))
+	spitter_projectile_damage = float(combat_polish.get("spitterProjectileDamage", spitter_projectile_damage))
 
 	var tutorial_config: Dictionary = config.get("tutorial", {})
 	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
@@ -733,6 +770,7 @@ func _apply_ui_skin() -> void:
 
 	var controls := [
 		action_button,
+		dash_button,
 		rhino_button,
 		travel_biome_button,
 		scavenge_button,
@@ -855,6 +893,20 @@ func _build_hud() -> void:
 	boss_label.add_theme_font_size_override("font_size", 18)
 	boss_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.92))
 	hud_root.add_child(boss_label)
+
+	combo_label = Label.new()
+	combo_label.position = Vector2(1240, 48)
+	combo_label.size = Vector2(300, 22)
+	combo_label.add_theme_font_size_override("font_size", 18)
+	combo_label.add_theme_color_override("font_color", Color(0.95, 1.0, 0.82))
+	hud_root.add_child(combo_label)
+
+	dash_label = Label.new()
+	dash_label.position = Vector2(1560, 48)
+	dash_label.size = Vector2(260, 22)
+	dash_label.add_theme_font_size_override("font_size", 18)
+	dash_label.add_theme_color_override("font_color", Color(0.84, 0.96, 1.0))
+	hud_root.add_child(dash_label)
 
 	health_bar = ProgressBar.new()
 	health_bar.position = Vector2(20, 82)
@@ -1020,6 +1072,13 @@ func _build_hud() -> void:
 	action_button.text = "ATTACK"
 	action_button.pressed.connect(_on_action_pressed)
 	hud_root.add_child(action_button)
+
+	dash_button = Button.new()
+	dash_button.position = Vector2(1370, 944)
+	dash_button.size = Vector2(180, 84)
+	dash_button.text = "DASH"
+	dash_button.pressed.connect(_on_dash_pressed)
+	hud_root.add_child(dash_button)
 
 	left_stick_base = Panel.new()
 	left_stick_base.size = Vector2(140, 140)
@@ -1260,6 +1319,7 @@ func _is_dead_zone(position: Vector2) -> bool:
 func _is_over_interactive_ui(position: Vector2) -> bool:
 	var controls: Array[Control] = [
 		action_button,
+		dash_button,
 		rhino_button,
 		travel_biome_button,
 		scavenge_button,
@@ -1310,6 +1370,21 @@ func _update_player_state(delta: float) -> void:
 		status_label.text = "Recovered from Exhausted state."
 
 
+func _update_dash_and_combo(delta: float) -> void:
+	dash_cooldown_remaining = max(0.0, dash_cooldown_remaining - delta)
+	if dash_time_left > 0.0:
+		dash_time_left = max(0.0, dash_time_left - delta)
+
+	if combo_streak <= 0:
+		combo_multiplier = 1.0
+		combo_decay_time_left = 0.0
+		return
+	combo_decay_time_left = max(0.0, combo_decay_time_left - delta)
+	if combo_decay_time_left <= 0.0:
+		combo_streak = 0
+		combo_multiplier = 1.0
+
+
 func _apply_hotbar_context_rules() -> void:
 	loadout_move_speed_multiplier = 1.0
 	if player_state == PlayerState.RHINO_CHARGE:
@@ -1335,9 +1410,12 @@ func _apply_hotbar_context_rules() -> void:
 
 func _update_movement(delta: float) -> void:
 	var velocity := left_vector
-	if velocity.length() > 0.05:
-		player_direction = velocity.normalized()
 	var speed := base_move_speed * state_move_speed_multiplier * loadout_move_speed_multiplier
+	if dash_time_left > 0.0:
+		velocity = dash_direction
+		speed *= 2.7
+	elif velocity.length() > 0.05:
+		player_direction = velocity.normalized()
 	player_position += velocity * speed * delta
 	player_position.x = clamp(player_position.x, left_dead_zone_px + 30.0, viewport_size.x - right_dead_zone_px - 30.0)
 	player_position.y = clamp(player_position.y, 320.0, viewport_size.y - 70.0)
@@ -1536,6 +1614,7 @@ func _update_wave_system(delta: float) -> void:
 func _start_next_wave() -> void:
 	wave_number += 1
 	wave_active = true
+	enemy_projectiles.clear()
 	wave_spawn_remaining = wave_base_enemies + wave_number * wave_enemy_growth
 	wave_spawn_tick = 0.15
 	status_label.text = "Wave %d started." % wave_number
@@ -1572,17 +1651,79 @@ func _spawn_enemy() -> void:
 
 
 func _update_enemies(delta: float) -> void:
+	spitter_shot_tick = max(0.0, spitter_shot_tick - delta)
+	var spitter_position_for_shot := Vector2.ZERO
+	var has_spitter_line := false
 	for i in active_enemies.size():
 		var enemy: Dictionary = active_enemies[i]
 		var enemy_position: Vector2 = enemy.get("position", Vector2.ZERO)
 		var enemy_speed: float = enemy.get("speed", 60.0)
+		var enemy_type := String(enemy.get("type", "drone"))
 		var drift := Vector2(randf_range(-0.35, 0.35), randf_range(-0.35, 0.35))
 		var direction := (player_position - enemy_position).normalized()
+		if enemy_type == "brute":
+			drift *= 0.45
+		elif enemy_type == "spitter":
+			if enemy_position.distance_to(player_position) < 170.0:
+				direction = -direction
+			if not has_spitter_line and enemy_position.distance_to(player_position) < 520.0:
+				spitter_position_for_shot = enemy_position
+				has_spitter_line = true
 		enemy_position += (direction + drift).normalized() * enemy_speed * delta
 		enemy_position.x = clamp(enemy_position.x, left_dead_zone_px + 35.0, viewport_size.x - right_dead_zone_px - 35.0)
 		enemy_position.y = clamp(enemy_position.y, 330.0, viewport_size.y - 60.0)
 		enemy["position"] = enemy_position
 		active_enemies[i] = enemy
+
+	if has_spitter_line and spitter_shot_tick <= 0.0:
+		_spawn_enemy_projectile(spitter_position_for_shot)
+		spitter_shot_tick = 1.15
+
+
+func _spawn_enemy_projectile(origin: Vector2) -> void:
+	var fire_direction := (player_position - origin).normalized()
+	if fire_direction.length() <= 0.01:
+		return
+	enemy_projectiles.append({
+		"position": origin,
+		"velocity": fire_direction * spitter_projectile_speed,
+		"ttl": 2.5
+	})
+
+
+func _update_enemy_projectiles(delta: float) -> void:
+	if enemy_projectiles.is_empty():
+		return
+	var to_remove: Array[int] = []
+	for i in enemy_projectiles.size():
+		var projectile: Dictionary = enemy_projectiles[i]
+		var position: Vector2 = projectile.get("position", Vector2.ZERO)
+		var velocity: Vector2 = projectile.get("velocity", Vector2.ZERO)
+		var ttl: float = projectile.get("ttl", 0.0)
+		position += velocity * delta
+		ttl -= delta
+		projectile["position"] = position
+		projectile["ttl"] = ttl
+		enemy_projectiles[i] = projectile
+
+		if ttl <= 0.0:
+			to_remove.append(i)
+			continue
+		if position.x < left_dead_zone_px + 16.0 or position.x > viewport_size.x - right_dead_zone_px - 16.0:
+			to_remove.append(i)
+			continue
+		if position.y < 310.0 or position.y > viewport_size.y - 44.0:
+			to_remove.append(i)
+			continue
+		if position.distance_to(player_position) <= 34.0:
+			_apply_player_damage(spitter_projectile_damage, "Spitter acid bolt")
+			to_remove.append(i)
+			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
+
+	if not to_remove.is_empty():
+		to_remove.reverse()
+		for index in to_remove:
+			enemy_projectiles.remove_at(index)
 
 
 func _update_enemy_contacts(delta: float) -> void:
@@ -1610,7 +1751,13 @@ func _update_enemy_contacts(delta: float) -> void:
 
 
 func _apply_player_damage(amount: float, source: String) -> void:
+	if dash_time_left > 0.0:
+		status_label.text = "Dash evaded %s." % source
+		return
 	health = clamp(health - amount, 0.0, max_health)
+	combo_streak = 0
+	combo_multiplier = 1.0
+	combo_decay_time_left = 0.0
 	feedback_bus.emit_feedback("hit")
 	status_label.text = "Hit by %s: -%.0f HP" % [source, amount]
 	if health > 0.0:
@@ -1625,6 +1772,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	hunger = max_hunger * 0.55
 	player_position = get_viewport_rect().size * 0.5
 	active_enemies.clear()
+	enemy_projectiles.clear()
 	wave_active = false
 	wave_wait_tick = 2.5
 	boss_active = false
@@ -1633,6 +1781,10 @@ func _apply_player_damage(amount: float, source: String) -> void:
 
 func _on_enemy_defeated(enemy: Dictionary) -> void:
 	drones_defeated += 1
+	combo_streak += 1
+	combo_decay_time_left = combo_timeout_seconds
+	combo_multiplier = min(2.4, 1.0 + float(combo_streak - 1) * 0.12)
+	max_combo_reached = float(max(max_combo_reached, combo_multiplier))
 	var enemy_type: String = enemy.get("type", "drone")
 	var current := int(bestiary_entries.get(enemy_type, 0))
 	bestiary_entries[enemy_type] = current + 1
@@ -1653,7 +1805,9 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 			crystal_gain += 1
 
 	_scavenge_resources(scrap_gain, crystal_gain, 0, 0)
-	_grant_xp(8 + wave_number)
+	var base_xp := 8 + wave_number
+	var xp_gain := int(round(float(base_xp) * combo_multiplier))
+	_grant_xp(xp_gain)
 
 
 func _update_passive_scavenge(delta: float) -> void:
@@ -1822,6 +1976,7 @@ func _enter_boss_phase() -> void:
 	boss_active = true
 	wave_active = false
 	active_enemies.clear()
+	enemy_projectiles.clear()
 	boss = {
 		"name": "Overlord Vex",
 		"position": Vector2(viewport_size.x * 0.72, viewport_size.y * 0.55),
@@ -1859,6 +2014,7 @@ func _update_boss_system(delta: float) -> void:
 
 func _on_boss_defeated() -> void:
 	boss_active = false
+	enemy_projectiles.clear()
 	player_state = PlayerState.RIFT_WEAVER
 	status_label.text = "Overlord Vex defeated. Alpha Strain extracted."
 	feedback_bus.emit_feedback("objective")
@@ -1910,7 +2066,10 @@ func _build_continue_snapshot() -> Dictionary:
 		"secret_walls_broken": secret_walls_broken,
 		"drones_defeated": drones_defeated,
 		"pages_collected_this_run": pages_collected_this_run,
-		"boss_spawned": boss_spawned
+		"boss_spawned": boss_spawned,
+		"dash_cooldown_remaining": dash_cooldown_remaining,
+		"max_combo_reached": max_combo_reached,
+		"dash_uses_this_run": dash_uses_this_run
 	}
 
 
@@ -1934,6 +2093,9 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	drones_defeated = int(snapshot.get("drones_defeated", drones_defeated))
 	pages_collected_this_run = int(snapshot.get("pages_collected_this_run", pages_collected_this_run))
 	boss_spawned = bool(snapshot.get("boss_spawned", false))
+	dash_cooldown_remaining = float(snapshot.get("dash_cooldown_remaining", 0.0))
+	max_combo_reached = float(snapshot.get("max_combo_reached", max_combo_reached))
+	dash_uses_this_run = int(snapshot.get("dash_uses_this_run", dash_uses_this_run))
 	var loaded_inventory: Dictionary = snapshot.get("inventory", {})
 	if typeof(loaded_inventory) == TYPE_DICTIONARY:
 		inventory = loaded_inventory
@@ -1960,6 +2122,7 @@ func _end_run(victory: bool, reason: String) -> void:
 	if game_ended:
 		return
 	game_ended = true
+	enemy_projectiles.clear()
 	is_soft_paused = true
 	pause_panel.visible = false
 	end_panel.visible = true
@@ -1970,6 +2133,7 @@ func _end_run(victory: bool, reason: String) -> void:
 		drones_defeated,
 		_format_time(run_elapsed_seconds)
 	]
+	end_subtitle.text += "\nMax combo: x%.2f | Dash uses: %d" % [max_combo_reached, dash_uses_this_run]
 	pending_result = _build_session_summary(victory, {}, reason)
 
 
@@ -1987,6 +2151,8 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"bank_scrap_gain": bank_scrap_gain,
 		"bank_crystal_gain": bank_crystal_gain,
 		"skins_unlocked": skins_unlocked,
+		"max_combo_reached": max_combo_reached,
+		"dash_uses": dash_uses_this_run,
 		"tutorial_completed": tutorial_completed_this_session or bool(profile.get("tutorial_completed", false)),
 		"continue_snapshot": snapshot
 	}
@@ -2017,6 +2183,7 @@ func _update_hud() -> void:
 	craft_button.disabled = input_locked
 	gain_page_button.disabled = input_locked
 	action_button.disabled = input_locked
+	dash_button.disabled = input_locked or dash_cooldown_remaining > 0.0 or player_state == PlayerState.RHINO_CHARGE
 
 	if player_state == PlayerState.RHINO_CHARGE:
 		rhino_timer_label.text = "Rhino timer: %.1fs" % rhino_time_left
@@ -2045,12 +2212,23 @@ func _update_hud() -> void:
 	quest_label.text = "Objectives: %s" % _objective_summary()
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
+	combo_label.text = "Combo x%.2f (%d)" % [combo_multiplier, combo_streak] if combo_streak > 1 else "Combo x1.00"
+	if dash_time_left > 0.0:
+		dash_label.text = "Dash: ACTIVE"
+		dash_button.text = "DASHING"
+	elif dash_cooldown_remaining > 0.0:
+		dash_label.text = "Dash CD: %.1fs" % dash_cooldown_remaining
+		dash_button.text = "DASH CD"
+	else:
+		dash_label.text = "Dash: READY"
+		dash_button.text = "DASH"
 	var active_hotbar_item := String(hotbar_items[selected_hotbar_index].get("label", "Item"))
 	hotbar_title.text = "Hotbar - %s" % active_hotbar_item
 	var ui_pulse := 0.88 + 0.12 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0))
 	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95, 1.0, 1.0)
 	rhino_button.modulate = Color(0.92, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
 	scavenge_button.modulate = Color(0.90, 0.96, 0.98 + 0.02 * ui_pulse, 1.0)
+	dash_button.modulate = Color(0.94, 0.94 + 0.06 * ui_pulse, 1.0, 1.0)
 
 	for i in hotbar_buttons.size():
 		hotbar_buttons[i].modulate = Color(1, 1, 1, 1)
@@ -2100,6 +2278,26 @@ func _on_action_pressed() -> void:
 	else:
 		var aim_direction := right_vector.normalized() if right_vector.length() > 0.2 else player_direction
 		_fire_attack("Action button", aim_direction)
+
+
+func _on_dash_pressed() -> void:
+	if game_ended:
+		return
+	if dash_cooldown_remaining > 0.0:
+		return
+	if player_state == PlayerState.RHINO_CHARGE:
+		return
+	var dash_vector := left_vector
+	if dash_vector.length() < 0.25:
+		dash_vector = right_vector
+	if dash_vector.length() < 0.25:
+		dash_vector = player_direction
+	dash_direction = dash_vector.normalized()
+	dash_time_left = dash_duration_seconds
+	dash_cooldown_remaining = dash_cooldown_seconds
+	dash_uses_this_run += 1
+	status_label.text = "Dash burst activated."
+	feedback_bus.emit_feedback("attack")
 
 
 func _on_rhino_pressed() -> void:

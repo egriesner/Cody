@@ -183,6 +183,13 @@
     "contactDamage": 16,
     "shockwaveDamage": 18
   },
+  "combatPolish": {
+    "dashCooldownSeconds": 2.4,
+    "dashDurationSeconds": 0.22,
+    "comboTimeoutSeconds": 4.0,
+    "spitterProjectileSpeed": 420,
+    "spitterProjectileDamage": 8
+  },
   "tutorial": {
     "enabled": true,
     "allowSkip": true,
