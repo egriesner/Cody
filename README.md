@@ -11,7 +11,7 @@ Developer/Studio: **Code Max Studios**
 - `scenes/Main.tscn`
   - Main playable scene.
 - `scripts/Main.gd`
-  - Runtime logic for touch controls, state machine hooks, survival, hotbar context switching, and companion triggers.
+  - Runtime logic for touch controls, state machine hooks, survival, hotbar context switching, companion triggers, enemy waves, crafting, objectives, and save/load.
 - `assets/icon.svg`
   - Base app icon.
 - `export_presets.cfg`
@@ -36,6 +36,18 @@ Developer/Studio: **Code Max Studios**
    - Left-click + drag in left zone to move.
    - Left-click + drag in right zone to aim/fire.
    - Use hotbar buttons to switch to food/heavy weapon behaviors.
+
+## Current Prototype Features (Phase 2)
+
+- Continuous wave combat with drone variants (drone, brute, spitter)
+- Resource economy (`human_scrap`, `alien_crystals`, foods) and scavenge bursts
+- Crafting loop with weapon recipes and level gates
+- Companion behaviors:
+  - Keeley Sonic Scream / Neuro-Toxic Wail
+  - Annalize railgun support + loot bonus
+- Daily-style objective tracker with XP rewards
+- Leveling + progression stats + bestiary page tracking
+- Save/Load to `user://rift_save.json`
 
 ## Android Release
 

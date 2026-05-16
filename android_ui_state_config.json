@@ -136,5 +136,39 @@
     "recommendedSessionMinutes": 8,
     "uiTextStyle": "short-labels-high-contrast",
     "failureRecovery": "quick-retry-with-rewarded-progression"
+  },
+  "waveCombat": {
+    "baseWaveEnemies": 4,
+    "waveEnemyGrowth": 2,
+    "spawnRadiusPx": 430,
+    "contactDamageCooldownSeconds": 0.65
+  },
+  "progression": {
+    "baseLevelXp": 70,
+    "levelXpGrowth": 28,
+    "healthGainPerLevel": 8,
+    "hungerGainPerLevel": 6
+  },
+  "crafting": {
+    "recipes": [
+      {
+        "id": "pulse_blade",
+        "scrap": 5,
+        "crystal": 2,
+        "unlockLevel": 1
+      },
+      {
+        "id": "arc_launcher",
+        "scrap": 8,
+        "crystal": 4,
+        "unlockLevel": 2
+      },
+      {
+        "id": "vex_piercer_cannon",
+        "scrap": 12,
+        "crystal": 8,
+        "unlockLevel": 4
+      }
+    ]
   }
 }
