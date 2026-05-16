@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#080914"/>
+      <stop offset="50%" stop-color="#161136"/>
+      <stop offset="100%" stop-color="#100a24"/>
+    </linearGradient>
+    <linearGradient id="panelGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#171d3f" stop-opacity="0.92"/>
+      <stop offset="100%" stop-color="#0f132b" stop-opacity="0.92"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e8ff"/>
+      <stop offset="100%" stop-color="#b14dff"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="4" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#52f1ff"/>
+    </marker>
+    <style><![CDATA[
+      .title { font: 700 48px 'Inter', Arial, sans-serif; fill: #e7f8ff; letter-spacing: 1px; }
+      .subtitle { font: 600 20px 'Inter', Arial, sans-serif; fill: #87dfff; }
+      .panel { fill: url(#panelGrad); stroke: #2cc7ff; stroke-width: 2; rx: 16; }
+      .panel-title { font: 700 24px 'Inter', Arial, sans-serif; fill: #7fe9ff; }
+      .body { font: 500 17px 'Inter', Arial, sans-serif; fill: #d7e7ff; }
+      .small { font: 500 14px 'Inter', Arial, sans-serif; fill: #b9cbff; }
+      .tiny { font: 600 12px 'Inter', Arial, sans-serif; fill: #d4f8ff; }
+      .chip { fill: #19254f; stroke: #58d8ff; stroke-width: 1.2; rx: 8; }
+      .danger { fill: #ff4d7c; font: 700 15px 'Inter', Arial, sans-serif; }
+      .ok { fill: #66ffbe; font: 700 15px 'Inter', Arial, sans-serif; }
+      .mutedline { stroke: #4064aa; stroke-width: 1; stroke-dasharray: 4 5; opacity: 0.7; }
+      .flow { stroke: #5ce9ff; stroke-width: 2.3; fill: none; marker-end: url(#arrow); }
+      .accent { stroke: url(#accentGrad); stroke-width: 3; fill: none; }
+    ]]></style>
+  </defs>
+
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#bgGrad)"/>
+  <g opacity="0.22">
+    <path d="M0 200 H1920 M0 400 H1920 M0 600 H1920 M0 800 H1920" class="mutedline"/>
+    <path d="M240 0 V1080 M480 0 V1080 M720 0 V1080 M960 0 V1080 M1200 0 V1080 M1440 0 V1080 M1680 0 V1080" class="mutedline"/>
+  </g>
+
+  <text x="960" y="66" text-anchor="middle" class="title">RIFT: MASTER CONCEPT &amp; TECHNICAL UI BLUEPRINT</text>
+  <text x="960" y="98" text-anchor="middle" class="subtitle">Open-World Survival | Android Multi-Touch Combat-Crafting | Companion Protocols | Mutation States</text>
+
+  <line x1="420" y1="112" x2="1500" y2="112" class="accent" filter="url(#glow)"/>
+
+  <!-- Section 1 -->
+  <rect x="40" y="140" width="560" height="360" class="panel"/>
+  <text x="64" y="176" class="panel-title">Section 1: Open-World Survival Loop</text>
+
+  <rect x="64" y="196" width="250" height="130" class="chip"/>
+  <text x="76" y="220" class="body">1) Explore Biomes</text>
+  <text x="78" y="246" class="small">- Scrap Dunes</text>
+  <text x="78" y="268" class="small">- Whispering Archives</text>
+  <text x="78" y="290" class="small">- Plasma Crater</text>
+  <text x="78" y="312" class="tiny">Seamless sector traversal (no stage breaks)</text>
+
+  <rect x="336" y="196" width="240" height="130" class="chip"/>
+  <text x="348" y="220" class="body">2) Scavenge Tech + Food</text>
+  <text x="350" y="244" class="small">Human Scrap | Alien Crystals</text>
+  <text x="350" y="266" class="small">Star-Melons | Glow-Berries</text>
+  <text x="350" y="290" class="tiny">Drops feed crafting + survival economy</text>
+
+  <rect x="64" y="338" width="250" height="138" class="chip"/>
+  <text x="76" y="362" class="body">3) Survival Grid</text>
+  <text x="78" y="386" class="small">Health</text>
+  <rect x="140" y="374" width="150" height="14" rx="7" fill="#233164"/>
+  <rect x="140" y="374" width="130" height="14" rx="7" fill="#56ffd5"/>
+  <text x="78" y="412" class="small">Hunger (Energy)</text>
+  <rect x="200" y="400" width="90" height="14" rx="7" fill="#ff5895"/>
+  <rect x="140" y="400" width="150" height="14" rx="7" fill="none" stroke="#ff7faf" stroke-width="1.2"/>
+  <text x="78" y="440" class="danger">ZERO HUNGER =&gt; EXHAUSTED (slow movement)</text>
+
+  <rect x="336" y="338" width="240" height="138" class="chip"/>
+  <text x="348" y="362" class="body">4) Quantum Workbench</text>
+  <text x="350" y="386" class="small">Scrap + Crystals =&gt; Tier Weapons</text>
+  <text x="350" y="408" class="small">T1 Pulse Blade | T2 Arc Launcher</text>
+  <text x="350" y="430" class="small">T3 Vex-Piercer Cannon</text>
+  <text x="350" y="456" class="tiny">Crafting output directly modifies combat loadout</text>
+
+  <path d="M316 258 C328 258 336 258 336 258" class="flow"/>
+  <path d="M456 330 C456 336 456 338 456 338" class="flow"/>
+  <path d="M334 406 C326 406 314 406 314 406" class="flow"/>
+  <path d="M190 336 C190 330 190 326 190 326 C190 298 178 288 164 288" class="flow"/>
+
+  <!-- Section 2 -->
+  <rect x="620" y="140" width="680" height="560" class="panel"/>
+  <text x="644" y="176" class="panel-title">Section 2: Android Tablet \"Brawl-Craft\" UI (Touch Template)</text>
+
+  <rect x="706" y="214" width="508" height="418" rx="22" fill="#0a1026" stroke="#86f1ff" stroke-width="2.2"/>
+  <text x="960" y="242" text-anchor="middle" class="body">ANDROID TABLET PLAYFIELD</text>
+
+  <rect x="706" y="214" width="100" height="418" fill="#ff4d77" fill-opacity="0.2" stroke="#ff7f9e" stroke-width="1.4"/>
+  <rect x="1114" y="214" width="100" height="418" fill="#ff4d77" fill-opacity="0.2" stroke="#ff7f9e" stroke-width="1.4"/>
+  <text x="756" y="264" text-anchor="middle" class="tiny">100px DEAD-ZONE</text>
+  <text x="1164" y="264" text-anchor="middle" class="tiny">100px DEAD-ZONE</text>
+
+  <circle cx="822" cy="532" r="54" fill="#112245" stroke="#67e7ff" stroke-width="2"/>
+  <circle cx="822" cy="532" r="22" fill="#3ad5ff"/>
+  <text x="822" y="594" text-anchor="middle" class="tiny">Dynamic Move Stick</text>
+
+  <circle cx="1098" cy="532" r="64" fill="#1a1f4f" stroke="#a778ff" stroke-width="2"/>
+  <line x1="1098" y1="532" x2="1144" y2="496" stroke="#cb9bff" stroke-width="3"/>
+  <circle cx="1144" cy="496" r="12" fill="#d0adff"/>
+  <text x="1098" y="606" text-anchor="middle" class="tiny">Drag-to-Aim + Quick-Tap Auto-Fire</text>
+
+  <rect x="850" y="558" width="220" height="56" rx="10" fill="#101b3f" stroke="#5de2ff" stroke-width="1.8"/>
+  <text x="960" y="550" text-anchor="middle" class="tiny">5-Slot Hotbar</text>
+  <line x1="894" y1="558" x2="894" y2="614" stroke="#5de2ff"/>
+  <line x1="938" y1="558" x2="938" y2="614" stroke="#5de2ff"/>
+  <line x1="982" y1="558" x2="982" y2="614" stroke="#5de2ff"/>
+  <line x1="1026" y1="558" x2="1026" y2="614" stroke="#5de2ff"/>
+  <text x="872" y="590" class="tiny">1</text>
+  <text x="916" y="590" class="tiny">2</text>
+  <text x="960" y="590" class="tiny">3</text>
+  <text x="1004" y="590" class="tiny">4</text>
+  <text x="1048" y="590" class="tiny">5</text>
+
+  <rect x="644" y="214" width="50" height="190" class="chip"/>
+  <text x="650" y="240" class="tiny">Coord</text>
+  <text x="650" y="258" class="tiny">Grid</text>
+  <text x="650" y="280" class="tiny">x:0-1920</text>
+  <text x="650" y="298" class="tiny">y:0-1080</text>
+  <text x="650" y="322" class="tiny">UI anchors</text>
+
+  <rect x="644" y="430" width="226" height="88" class="chip"/>
+  <text x="656" y="454" class="small">Heavy weapon selected:</text>
+  <text x="656" y="476" class="danger">Walk speed debuff + animation slowdown</text>
+  <text x="656" y="498" class="tiny">Hook: onHotbarIndexChanged(slot)</text>
+
+  <rect x="1082" y="430" width="206" height="88" class="chip"/>
+  <text x="1094" y="454" class="small">Food selected:</text>
+  <rect x="1178" y="464" width="90" height="34" rx="8" fill="#37e1a4" stroke="#95ffd9"/>
+  <text x="1223" y="486" text-anchor="middle" class="body" fill="#08221b">EAT</text>
+  <text x="1094" y="508" class="tiny">Attack pad morphs to consume action</text>
+
+  <rect x="1118" y="228" width="160" height="170" class="chip"/>
+  <text x="1128" y="252" class="small">Skin Fabricator</text>
+  <text x="1128" y="272" class="tiny">Wardrobe Preview</text>
+  <rect x="1132" y="286" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+  <rect x="1180" y="286" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+  <rect x="1228" y="286" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+  <rect x="1132" y="334" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+  <rect x="1180" y="334" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+  <rect x="1228" y="334" width="42" height="42" fill="#2d3b6d" stroke="#7be9ff"/>
+
+  <!-- Section 3 -->
+  <rect x="1320" y="140" width="560" height="430" class="panel"/>
+  <text x="1344" y="176" class="panel-title">Section 3: Companion Protocol System</text>
+
+  <rect x="1344" y="198" width="252" height="348" class="chip"/>
+  <text x="1360" y="224" class="body">Keeley - Tech Scout</text>
+  <text x="1360" y="246" class="small">Scanner goggles + utility drones</text>
+  <rect x="1360" y="264" width="220" height="104" rx="8" fill="#142756" stroke="#5de2ff"/>
+  <text x="1370" y="288" class="small">Trigger: Sonic Scream</text>
+  <text x="1370" y="310" class="tiny">If surrounded by 5+ enemies</text>
+  <text x="1370" y="332" class="tiny">sonar ring fears crowd outward</text>
+  <circle cx="1544" cy="318" r="18" fill="none" stroke="#85f2ff" stroke-width="2"/>
+  <circle cx="1544" cy="318" r="28" fill="none" stroke="#85f2ff" stroke-width="1.6"/>
+
+  <rect x="1360" y="380" width="220" height="146" rx="8" fill="#1b244d" stroke="#76ffbc"/>
+  <text x="1370" y="404" class="small">DNA Upgrade State</text>
+  <text x="1370" y="426" class="ok">Neuro-Toxic Wail</text>
+  <text x="1370" y="448" class="tiny">Green sonic cloud + poison DoT</text>
+  <text x="1370" y="470" class="tiny">Hook: companion.abilityVariant = toxic</text>
+  <circle cx="1540" cy="448" r="18" fill="#49d876" fill-opacity="0.45"/>
+
+  <rect x="1612" y="198" width="252" height="348" class="chip"/>
+  <text x="1628" y="224" class="body">Annalize - Master Engineer</text>
+  <text x="1628" y="246" class="small">Heavy apron + Vex-Shatterer Railgun</text>
+  <rect x="1628" y="266" width="220" height="116" rx="8" fill="#182157" stroke="#8ec7ff"/>
+  <text x="1640" y="292" class="small">Exclusive Perks</text>
+  <text x="1640" y="316" class="ok">+30% Loot Drop Modifier</text>
+  <text x="1640" y="338" class="ok">Unlock Quantum Forge (High Tier)</text>
+  <text x="1640" y="360" class="tiny">Hook: unlockMenu(\"quantum_forge\")</text>
+
+  <rect x="1628" y="398" width="220" height="128" rx="8" fill="#191c42" stroke="#9d8eff"/>
+  <text x="1640" y="424" class="small">Railgun Signature</text>
+  <text x="1640" y="446" class="tiny">Charged piercing line-shot</text>
+  <line x1="1640" y1="464" x2="1826" y2="464" stroke="#b09dff" stroke-width="3"/>
+  <text x="1640" y="492" class="tiny">Adds anti-elite support role</text>
+
+  <!-- Section 4 -->
+  <rect x="40" y="530" width="880" height="510" class="panel"/>
+  <text x="64" y="566" class="panel-title">Section 4: Wild-Card Mutations</text>
+  <text x="64" y="594" class="body">Rhino Charge (Temporary State)</text>
+
+  <rect x="64" y="612" width="406" height="394" class="chip"/>
+  <text x="80" y="638" class="small">Cody morphs into a spectral tech-armored Rhino</text>
+  <ellipse cx="238" cy="794" rx="140" ry="92" fill="#20307a" stroke="#64efff" stroke-width="2"/>
+  <path d="M122 792 C152 732 284 728 336 774 C348 812 316 858 258 874 C204 890 138 860 122 792 z" fill="#56cbff" fill-opacity="0.45" stroke="#8cf4ff" stroke-width="2.2"/>
+  <path d="M326 786 L376 760 L346 808 z" fill="#adf4ff"/>
+  <text x="92" y="930" class="tiny">State duration: 6.0s high-adrenaline burst</text>
+  <text x="92" y="952" class="tiny">Collides with Vexian drones + cracks secret walls</text>
+
+  <rect x="486" y="612" width="410" height="394" class="chip"/>
+  <text x="502" y="638" class="small">UI Overrides During Rhino Charge</text>
+  <line x1="504" y1="668" x2="878" y2="668" stroke="#67e6ff" stroke-width="1.3"/>
+  <text x="504" y="696" class="tiny">- Hotbar slides off-screen</text>
+  <text x="504" y="726" class="tiny">- Right joystick replaced by boost control</text>
+  <rect x="548" y="750" width="294" height="92" rx="16" fill="#ff4d73" stroke="#ffc1d0" stroke-width="2.2"/>
+  <text x="695" y="805" text-anchor="middle" class="body" fill="#ffffff">RAMMING SPEED</text>
+  <circle cx="695" cy="902" r="52" fill="#1b285a" stroke="#6bf2ff" stroke-width="2"/>
+  <text x="695" y="910" text-anchor="middle" class="danger">6</text>
+  <text x="695" y="946" text-anchor="middle" class="tiny">Countdown Timer (seconds)</text>
+  <text x="504" y="986" class="tiny">Hook: setCombatInputMode(\"rhino_charge\")</text>
+
+  <path d="M470 812 C486 812 500 812 500 812" class="flow"/>
+
+  <!-- Section 5 -->
+  <rect x="940" y="590" width="940" height="450" class="panel"/>
+  <text x="964" y="626" class="panel-title">Section 5: Climax &amp; Bestiary Resolution</text>
+
+  <rect x="964" y="646" width="892" height="172" class="chip"/>
+  <text x="980" y="674" class="body">Titan Protocol (Quest Chain)</text>
+  <text x="980" y="704" class="small">Find hidden holographic pages</text>
+  <text x="1268" y="704" class="small">Fill Bestiary entries</text>
+  <text x="1540" y="704" class="small">Unlock Super Beast (Overlord arena only)</text>
+  <line x1="1180" y1="696" x2="1248" y2="696" class="flow"/>
+  <line x1="1430" y1="696" x2="1508" y2="696" class="flow"/>
+  <text x="980" y="740" class="tiny">Gating rule: Super Beast form cannot be used in standard exploration sectors.</text>
+  <text x="980" y="766" class="tiny">Hook: if arena == \"overlord\" then enableSuperBeast = true</text>
+  <text x="980" y="792" class="tiny">Bestiary completion acts as core progression and narrative key.</text>
+
+  <rect x="964" y="832" width="892" height="186" class="chip"/>
+  <text x="980" y="860" class="body">Alpha Strain Extraction (Final State)</text>
+  <text x="980" y="890" class="small">Defeat Overlord Vex -&gt; Obtain Alpha Strain DNA -&gt; Become Rift Weaver</text>
+  <text x="980" y="920" class="small">Rapid screen taps channel cosmic energy -&gt; tear open final rift home</text>
+  <line x1="1320" y1="886" x2="1364" y2="886" class="flow"/>
+  <line x1="1536" y1="886" x2="1588" y2="886" class="flow"/>
+  <text x="980" y="952" class="tiny">Input mechanic: repeated tap burst meter to stabilize rift aperture.</text>
+  <text x="980" y="982" class="tiny">End-state transformation: Cody Max =&gt; Rift Weaver (cosmic channel mode).</text>
+  <circle cx="1768" cy="930" r="46" fill="#2f1d6e" stroke="#87f4ff" stroke-width="2.3"/>
+  <circle cx="1768" cy="930" r="30" fill="none" stroke="#b88eff" stroke-width="2"/>
+  <path d="M1738 930 C1750 910 1780 910 1798 930 C1780 950 1750 950 1738 930 z" fill="#86ecff" fill-opacity="0.32"/>
+
+  <!-- Center Character Anchor -->
+  <g transform="translate(960 476)">
+    <text x="0" y="-138" text-anchor="middle" class="tiny">Cody Max: alien-scavenger tech suit + mechanical Bestiary gauntlet</text>
+    <ellipse cx="0" cy="0" rx="122" ry="152" fill="#1a2458" stroke="#7beeff" stroke-width="2.2"/>
+    <circle cx="0" cy="-88" r="34" fill="#243677" stroke="#8ff4ff" stroke-width="2"/>
+    <rect x="-62" y="-52" width="124" height="146" rx="18" fill="#2a3f86" stroke="#92b6ff" stroke-width="2"/>
+    <rect x="54" y="-12" width="58" height="24" rx="8" fill="#45cbff" stroke="#a0f2ff"/>
+    <text x="83" y="4" text-anchor="middle" class="tiny">Bestiary Link</text>
+    <path d="M112 0 C168 -16 190 -26 216 -34" stroke="#5be8ff" stroke-width="2" fill="none" marker-end="url(#arrow)"/>
+  </g>
+
+  <!-- Global connectors -->
+  <path d="M600 360 C640 360 672 320 706 320" class="flow"/>
+  <path d="M1214 360 C1260 360 1280 300 1320 300" class="flow"/>
+  <path d="M1284 600 C1370 600 1444 586 1520 570" class="flow"/>
+  <path d="M920 786 C944 786 952 786 964 786" class="flow"/>
+
+  <text x="960" y="1060" text-anchor="middle" class="tiny">RIFT: Bestiary Protocol | Neon-cyan + deep-purple tactical survival schema | Master implementation reference</text>
+</svg>
