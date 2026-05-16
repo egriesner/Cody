@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#5bf1ff"/>
+      <stop offset="100%" stop-color="#1c3f7b"/>
+    </radialGradient>
+  </defs>
+  <rect width="256" height="256" fill="none"/>
+  <circle cx="128" cy="128" r="118" fill="#0f1e45"/>
+  <circle cx="128" cy="128" r="100" fill="url(#bg)" opacity="0.28"/>
+  <circle cx="128" cy="90" r="38" fill="#f5b47c" stroke="#ffd7ac" stroke-width="4"/>
+  <path d="M90 90 C94 56 162 52 168 92 C156 66 104 66 90 90 Z" fill="#79583b"/>
+  <circle cx="114" cy="90" r="5" fill="#203047"/>
+  <circle cx="142" cy="90" r="5" fill="#203047"/>
+  <path d="M112 108 C118 114 138 114 144 108" fill="none" stroke="#944d4e" stroke-width="4" stroke-linecap="round"/>
+  <path d="M80 200 L94 128 L162 128 L176 200 Z" fill="#1f365e" stroke="#8df7ff" stroke-width="4"/>
+  <path d="M98 142 L126 122 L156 142 L150 186 L104 186 Z" fill="#4eb2e6" stroke="#d4fbff" stroke-width="3"/>
+  <circle cx="128" cy="154" r="11" fill="#a0ffff"/>
+  <rect x="66" y="118" width="30" height="72" rx="10" fill="#213f69" stroke="#93f7ff" stroke-width="3"/>
+  <rect x="160" y="118" width="30" height="72" rx="10" fill="#213f69" stroke="#93f7ff" stroke-width="3"/>
+  <circle cx="84" cy="106" r="14" fill="#80dfff" stroke="#d3f8ff" stroke-width="3"/>
+  <circle cx="172" cy="106" r="14" fill="#80dfff" stroke="#d3f8ff" stroke-width="3"/>
+  <text x="128" y="234" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700" fill="#aef7ff">KEELEY</text>
+</svg>

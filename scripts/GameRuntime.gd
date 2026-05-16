@@ -28,6 +28,24 @@ const ENEMY_DRONE_PATH := "res://assets/artpack/enemies/drone.svg"
 const ENEMY_BRUTE_PATH := "res://assets/artpack/enemies/brute.svg"
 const ENEMY_SPITTER_PATH := "res://assets/artpack/enemies/spitter.svg"
 const BOSS_OVERLORD_PATH := "res://assets/artpack/enemies/boss_overlord_vex.svg"
+const KEELEY_PORTRAIT_PATH := "res://assets/artpack/companions/keeley_portrait.svg"
+const ANNALIZE_PORTRAIT_PATH := "res://assets/artpack/companions/annalize_portrait.svg"
+const HOTBAR_ICON_PATHS := [
+	"res://assets/artpack/icons/pulse_tool.svg",
+	"res://assets/artpack/icons/titan_hammer.svg",
+	"res://assets/artpack/icons/glow_berry.svg",
+	"res://assets/artpack/icons/arc_blaster.svg",
+	"res://assets/artpack/icons/med_snack.svg"
+]
+const HUD_TOP_PANEL_PATH := "res://assets/artpack/ui/hud_top_panel.svg"
+const HUD_BOTTOM_PANEL_PATH := "res://assets/artpack/ui/hud_bottom_panel.svg"
+const BUTTON_PRIMARY_PATH := "res://assets/artpack/ui/button_primary.svg"
+const BUTTON_SECONDARY_PATH := "res://assets/artpack/ui/button_secondary.svg"
+const COMPANION_FRAME_PATH := "res://assets/artpack/ui/companion_frame.svg"
+const JOYSTICK_MOVE_BASE_PATH := "res://assets/artpack/ui/joystick_move_base.svg"
+const JOYSTICK_MOVE_KNOB_PATH := "res://assets/artpack/ui/joystick_move_knob.svg"
+const JOYSTICK_AIM_BASE_PATH := "res://assets/artpack/ui/joystick_aim_base.svg"
+const JOYSTICK_AIM_KNOB_PATH := "res://assets/artpack/ui/joystick_aim_knob.svg"
 const BIOME_BG_PATHS := [
 	"res://assets/artpack/backgrounds/biome_scrap_dunes.svg",
 	"res://assets/artpack/backgrounds/biome_whispering_archives.svg",
@@ -191,6 +209,8 @@ var left_stick_base: Panel
 var left_stick_knob: Panel
 var right_stick_base: Panel
 var right_stick_knob: Panel
+var companion_portrait_frame: Panel
+var companion_portrait: TextureRect
 
 var pause_panel: Panel
 var pause_title: Label
@@ -224,6 +244,18 @@ var enemy_brute_texture: Texture2D
 var enemy_spitter_texture: Texture2D
 var boss_sprite_texture: Texture2D
 var biome_bg_textures: Array = []
+var keeley_portrait_texture: Texture2D
+var annalize_portrait_texture: Texture2D
+var hotbar_icon_textures: Array = []
+var hud_top_panel_texture: Texture2D
+var hud_bottom_panel_texture: Texture2D
+var ui_button_primary_texture: Texture2D
+var ui_button_secondary_texture: Texture2D
+var ui_companion_frame_texture: Texture2D
+var ui_move_base_texture: Texture2D
+var ui_move_knob_texture: Texture2D
+var ui_aim_base_texture: Texture2D
+var ui_aim_knob_texture: Texture2D
 var top_hud_panel: Panel
 var bottom_hud_panel: Panel
 
@@ -287,11 +319,31 @@ func _load_visual_assets() -> void:
 			biome_texture = concept_bg_texture
 		biome_bg_textures.append(biome_texture)
 
+	keeley_portrait_texture = _load_texture_if_exists(KEELEY_PORTRAIT_PATH)
+	annalize_portrait_texture = _load_texture_if_exists(ANNALIZE_PORTRAIT_PATH)
+	hud_top_panel_texture = _load_texture_if_exists(HUD_TOP_PANEL_PATH)
+	hud_bottom_panel_texture = _load_texture_if_exists(HUD_BOTTOM_PANEL_PATH)
+	ui_button_primary_texture = _load_texture_if_exists(BUTTON_PRIMARY_PATH)
+	ui_button_secondary_texture = _load_texture_if_exists(BUTTON_SECONDARY_PATH)
+	ui_companion_frame_texture = _load_texture_if_exists(COMPANION_FRAME_PATH)
+	ui_move_base_texture = _load_texture_if_exists(JOYSTICK_MOVE_BASE_PATH)
+	ui_move_knob_texture = _load_texture_if_exists(JOYSTICK_MOVE_KNOB_PATH)
+	ui_aim_base_texture = _load_texture_if_exists(JOYSTICK_AIM_BASE_PATH)
+	ui_aim_knob_texture = _load_texture_if_exists(JOYSTICK_AIM_KNOB_PATH)
+	_load_hotbar_icon_textures()
+
 
 func _load_texture_if_exists(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+
+func _load_hotbar_icon_textures() -> void:
+	hotbar_icon_textures.clear()
+	for path in HOTBAR_ICON_PATHS:
+		var icon_texture: Texture2D = _load_texture_if_exists(path)
+		hotbar_icon_textures.append(icon_texture)
 
 
 func _texture_for_enemy_type(enemy_type: String) -> Texture2D:
@@ -633,11 +685,45 @@ func _style_panel_children_recursive(parent: Node) -> void:
 		_style_panel_children_recursive(child)
 
 
+func _make_texture_stylebox(texture: Texture2D, margin: int = 14) -> StyleBoxTexture:
+	var sb := StyleBoxTexture.new()
+	sb.texture = texture
+	sb.texture_margin_left = margin
+	sb.texture_margin_top = margin
+	sb.texture_margin_right = margin
+	sb.texture_margin_bottom = margin
+	return sb
+
+
+func _apply_hotbar_icons() -> void:
+	for i in hotbar_buttons.size():
+		if i >= hotbar_icon_textures.size():
+			continue
+		var icon_texture: Texture2D = hotbar_icon_textures[i]
+		if icon_texture == null:
+			continue
+		hotbar_buttons[i].icon = icon_texture
+		hotbar_buttons[i].expand_icon = true
+
+
+func _apply_companion_portrait() -> void:
+	if companion_portrait == null:
+		return
+	var portrait_texture: Texture2D = annalize_portrait_texture if companion_id == "annalize" else keeley_portrait_texture
+	companion_portrait.texture = portrait_texture
+
+
 func _apply_ui_skin() -> void:
 	if top_hud_panel != null:
-		top_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.76), Color(0.23, 0.82, 1.0, 0.72), 2, 0))
+		if hud_top_panel_texture != null:
+			top_hud_panel.add_theme_stylebox_override("panel", _make_texture_stylebox(hud_top_panel_texture, 12))
+		else:
+			top_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.76), Color(0.23, 0.82, 1.0, 0.72), 2, 0))
 	if bottom_hud_panel != null:
-		bottom_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.74), Color(0.55, 0.34, 0.98, 0.70), 2, 0))
+		if hud_bottom_panel_texture != null:
+			bottom_hud_panel.add_theme_stylebox_override("panel", _make_texture_stylebox(hud_bottom_panel_texture, 12))
+		else:
+			bottom_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.74), Color(0.55, 0.34, 0.98, 0.70), 2, 0))
 
 	var panels := [pause_panel, end_panel, tutorial_panel]
 	for p in panels:
@@ -665,6 +751,23 @@ func _apply_ui_skin() -> void:
 		if button != null:
 			_style_button_control(button)
 			button.add_theme_font_size_override("font_size", 15)
+	if ui_button_secondary_texture != null:
+		var secondary_style := _make_texture_stylebox(ui_button_secondary_texture, 10)
+		for control in controls:
+			if control != null:
+				control.add_theme_stylebox_override("normal", secondary_style)
+				control.add_theme_stylebox_override("hover", secondary_style)
+				control.add_theme_stylebox_override("pressed", secondary_style)
+		for button in hotbar_buttons:
+			if button != null:
+				button.add_theme_stylebox_override("normal", secondary_style)
+				button.add_theme_stylebox_override("hover", secondary_style)
+				button.add_theme_stylebox_override("pressed", secondary_style)
+	if ui_button_primary_texture != null and action_button != null:
+		var primary_style := _make_texture_stylebox(ui_button_primary_texture, 16)
+		action_button.add_theme_stylebox_override("normal", primary_style)
+		action_button.add_theme_stylebox_override("hover", primary_style)
+		action_button.add_theme_stylebox_override("pressed", primary_style)
 
 	if health_bar != null:
 		health_bar.add_theme_stylebox_override("background", _make_stylebox(Color(0.03, 0.08, 0.17, 0.72), Color(0.20, 0.48, 0.84, 0.7), 1, 8))
@@ -674,13 +777,33 @@ func _apply_ui_skin() -> void:
 		hunger_bar.add_theme_stylebox_override("fill", _make_stylebox(Color(0.98, 0.38, 0.63, 0.94), Color(1.0, 0.74, 0.84, 0.95), 1, 8))
 
 	if left_stick_base != null:
-		left_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.16, 0.72, 1.0, 0.14), Color(0.37, 0.95, 1.0, 0.9), 2, 70))
+		if ui_move_base_texture != null:
+			left_stick_base.add_theme_stylebox_override("panel", _make_texture_stylebox(ui_move_base_texture, 24))
+		else:
+			left_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.16, 0.72, 1.0, 0.14), Color(0.37, 0.95, 1.0, 0.9), 2, 70))
 	if left_stick_knob != null:
-		left_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.45, 0.95, 1.0, 0.58), Color(0.84, 1.0, 1.0, 0.96), 2, 30))
+		if ui_move_knob_texture != null:
+			left_stick_knob.add_theme_stylebox_override("panel", _make_texture_stylebox(ui_move_knob_texture, 10))
+		else:
+			left_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.45, 0.95, 1.0, 0.58), Color(0.84, 1.0, 1.0, 0.96), 2, 30))
 	if right_stick_base != null:
-		right_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.62, 0.42, 1.0, 0.14), Color(0.84, 0.68, 1.0, 0.88), 2, 80))
+		if ui_aim_base_texture != null:
+			right_stick_base.add_theme_stylebox_override("panel", _make_texture_stylebox(ui_aim_base_texture, 24))
+		else:
+			right_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.62, 0.42, 1.0, 0.14), Color(0.84, 0.68, 1.0, 0.88), 2, 80))
 	if right_stick_knob != null:
-		right_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.84, 0.62, 1.0, 0.56), Color(1.0, 0.90, 1.0, 0.96), 2, 30))
+		if ui_aim_knob_texture != null:
+			right_stick_knob.add_theme_stylebox_override("panel", _make_texture_stylebox(ui_aim_knob_texture, 10))
+		else:
+			right_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.84, 0.62, 1.0, 0.56), Color(1.0, 0.90, 1.0, 0.96), 2, 30))
+
+	if companion_portrait_frame != null:
+		if ui_companion_frame_texture != null:
+			companion_portrait_frame.add_theme_stylebox_override("panel", _make_texture_stylebox(ui_companion_frame_texture, 16))
+		else:
+			companion_portrait_frame.add_theme_stylebox_override("panel", _make_stylebox(Color(0.05, 0.16, 0.33, 0.88), Color(0.50, 0.90, 1.0, 0.88), 2, 14))
+	_apply_hotbar_icons()
+	_apply_companion_portrait()
 
 
 func _build_hud() -> void:
@@ -771,9 +894,23 @@ func _build_hud() -> void:
 	keeley_upgrade_toggle.toggled.connect(_on_keeley_upgrade_toggled)
 	hud_root.add_child(keeley_upgrade_toggle)
 
+	companion_portrait_frame = Panel.new()
+	companion_portrait_frame.position = Vector2(488, 150)
+	companion_portrait_frame.size = Vector2(132, 132)
+	companion_portrait_frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(companion_portrait_frame)
+
+	companion_portrait = TextureRect.new()
+	companion_portrait.position = Vector2(8, 8)
+	companion_portrait.size = Vector2(116, 116)
+	companion_portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	companion_portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	companion_portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	companion_portrait_frame.add_child(companion_portrait)
+
 	companion_label = Label.new()
 	companion_label.position = Vector2(20, 196)
-	companion_label.size = Vector2(980, 26)
+	companion_label.size = Vector2(1240, 26)
 	hud_root.add_child(companion_label)
 
 	loot_label = Label.new()
@@ -871,7 +1008,8 @@ func _build_hud() -> void:
 	for i in hotbar_items.size():
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(140, 74)
-		button.text = "%d: %s" % [i + 1, hotbar_items[i].get("label", "Item")]
+		button.text = "%d" % [i + 1]
+		button.tooltip_text = String(hotbar_items[i].get("label", "Item"))
 		button.pressed.connect(_on_hotbar_selected.bind(i))
 		hotbar_container.add_child(button)
 		hotbar_buttons.append(button)
@@ -1809,6 +1947,7 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	if typeof(loaded_objectives) == TYPE_ARRAY:
 		objectives = loaded_objectives
 	companion_select.select(0 if companion_id == "keeley" else 1)
+	_apply_companion_portrait()
 	keeley_upgrade_toggle.button_pressed = keeley_dna_upgrade
 	active_enemies.clear()
 	wave_active = false
@@ -1906,6 +2045,8 @@ func _update_hud() -> void:
 	quest_label.text = "Objectives: %s" % _objective_summary()
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
+	var active_hotbar_item := String(hotbar_items[selected_hotbar_index].get("label", "Item"))
+	hotbar_title.text = "Hotbar - %s" % active_hotbar_item
 	var ui_pulse := 0.88 + 0.12 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0))
 	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95, 1.0, 1.0)
 	rhino_button.modulate = Color(0.92, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
@@ -1983,6 +2124,7 @@ func _on_travel_biome_pressed() -> void:
 func _on_companion_changed(index: int) -> void:
 	companion_id = "keeley" if index == 0 else "annalize"
 	companion_label.text = "Companion switched to %s" % companion_select.get_item_text(index)
+	_apply_companion_portrait()
 
 
 func _on_keeley_upgrade_toggled(enabled: bool) -> void:
