@@ -71,3 +71,4 @@ See `docs/ANDROID_RELEASE_GUIDE.md` for keystore setup, export steps, sharing AP
 Use `docs/PLAYTEST_MATRIX.md` as the final QA checklist before external tester rollout.
 Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK build commands.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
+GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.

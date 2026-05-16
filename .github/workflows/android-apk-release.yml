@@ -1,0 +1,113 @@
+name: Android APK Release
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      build_mode:
+        description: APK build mode
+        required: true
+        default: release
+        type: choice
+        options:
+          - debug
+          - release
+      prerelease:
+        description: Mark release as prerelease
+        required: true
+        default: true
+        type: boolean
+      tag_name:
+        description: Optional custom tag name (leave empty for auto tag)
+        required: false
+        default: ""
+        type: string
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GODOT_VERSION: "4.2.2"
+      GODOT_STATUS: "stable"
+      BUILD_MODE: ${{ github.event.inputs.build_mode || 'release' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
+
+      - name: Install Godot headless + export templates
+        run: |
+          set -euxo pipefail
+          GODOT_FILE="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_linux.x86_64"
+          GODOT_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${GODOT_FILE}.zip"
+          curl -L "$GODOT_URL" -o /tmp/godot.zip
+          unzip -q /tmp/godot.zip -d /tmp/godot
+          install -m 0755 "/tmp/godot/${GODOT_FILE}" /usr/local/bin/godot4
+
+          TEMPLATE_FILE="Godot_v${GODOT_VERSION}-${GODOT_STATUS}_export_templates.tpz"
+          TEMPLATE_URL="https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-${GODOT_STATUS}/${TEMPLATE_FILE}"
+          curl -L "$TEMPLATE_URL" -o /tmp/templates.tpz
+          mkdir -p /tmp/godot_templates
+          unzip -q /tmp/templates.tpz -d /tmp/godot_templates
+
+          TEMPLATE_TARGET="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.${GODOT_STATUS}"
+          mkdir -p "$TEMPLATE_TARGET"
+          if [ -d /tmp/godot_templates/templates ]; then
+            cp -R /tmp/godot_templates/templates/* "$TEMPLATE_TARGET/"
+          else
+            cp -R /tmp/godot_templates/* "$TEMPLATE_TARGET/"
+          fi
+
+      - name: Build APK
+        env:
+          GODOT_BIN: godot4
+        run: |
+          ./tools/build_apk.sh "${BUILD_MODE}"
+
+      - name: Compute release metadata
+        id: release_meta
+        run: |
+          SHORT_SHA="$(echo "$GITHUB_SHA" | cut -c1-7)"
+          DATE_TAG="$(date -u +%Y%m%d-%H%M)"
+          if [ -n "${{ github.event.inputs.tag_name }}" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+          else
+            TAG="apk-${DATE_TAG}-${SHORT_SHA}"
+          fi
+
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            PRERELEASE_VALUE="${{ github.event.inputs.prerelease }}"
+          else
+            PRERELEASE_VALUE="false"
+          fi
+
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "name=RIFT APK ${DATE_TAG} (${SHORT_SHA})" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE_VALUE}" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub release with APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_meta.outputs.tag }}
+          name: ${{ steps.release_meta.outputs.name }}
+          prerelease: ${{ steps.release_meta.outputs.prerelease }}
+          generate_release_notes: true
+          files: build/*.apk

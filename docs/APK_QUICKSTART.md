@@ -60,3 +60,15 @@ This repo now includes `.github/workflows/android-apk.yml`.
 - You can also run it manually from **Actions -> Android APK CI -> Run workflow**.
 - Download from:
   - **GitHub -> Actions -> Android APK CI -> latest run -> Artifacts**
+
+## 7) Permanent APK links via GitHub Releases
+
+This repo also includes `.github/workflows/android-apk-release.yml`.
+
+- Runs automatically on push to `main`
+- Can be run manually from **Actions -> Android APK Release -> Run workflow**
+- Creates a GitHub Release and attaches the APK
+
+Download permanent APK URLs from:
+
+- **GitHub -> Releases -> latest `apk-*` release -> Assets**
