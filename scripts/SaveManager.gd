@@ -82,7 +82,7 @@ static func apply_session_result(profile: Dictionary, result: Dictionary) -> Dic
 	updated["total_drones_defeated"] = int(updated.get("total_drones_defeated", 0)) + int(result.get("drones_defeated", 0))
 	updated["total_bestiary_pages"] = int(updated.get("total_bestiary_pages", 0)) + int(result.get("bestiary_pages_collected", 0))
 
-	var bank := updated.get("resources_bank", {})
+	var bank: Dictionary = updated.get("resources_bank", {})
 	bank["human_scrap"] = int(bank.get("human_scrap", 0)) + int(result.get("bank_scrap_gain", 0))
 	bank["alien_crystals"] = int(bank.get("alien_crystals", 0)) + int(result.get("bank_crystal_gain", 0))
 	updated["resources_bank"] = bank
@@ -91,7 +91,7 @@ static func apply_session_result(profile: Dictionary, result: Dictionary) -> Dic
 	updated["unlocked_skins"] = maxi(int(updated.get("unlocked_skins", 1)), int(result.get("skins_unlocked", 1)))
 	updated["tutorial_completed"] = bool(updated.get("tutorial_completed", false)) or bool(result.get("tutorial_completed", false))
 
-	var snapshot = result.get("continue_snapshot", {})
+	var snapshot: Dictionary = result.get("continue_snapshot", {})
 	if typeof(snapshot) == TYPE_DICTIONARY and not snapshot.is_empty():
 		updated["has_continue_snapshot"] = true
 		updated["continue_snapshot"] = snapshot

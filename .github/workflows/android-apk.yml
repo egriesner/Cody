@@ -25,7 +25,7 @@ jobs:
     permissions:
       contents: read
     env:
-      GODOT_VERSION: "4.2.2"
+      GODOT_VERSION: "4.4.1"
       GODOT_STATUS: "stable"
       BUILD_MODE: ${{ github.event.inputs.build_mode || 'debug' }}
 
@@ -70,9 +70,25 @@ jobs:
             cp -R /tmp/godot_templates/* "$TEMPLATE_TARGET/"
           fi
 
+      - name: Generate debug keystore for CI exports
+        run: |
+          keytool -genkeypair -v \
+            -keystore "$RUNNER_TEMP/debug.keystore" \
+            -alias androiddebugkey \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass android \
+            -keypass android \
+            -dname "CN=Android Debug,O=Android,C=US"
+
       - name: Build APK
         env:
           GODOT_BIN: godot4
+          INSTALL_ANDROID_BUILD_TEMPLATE: "1"
+          GODOT_ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/debug.keystore
+          GODOT_ANDROID_KEYSTORE_USER: androiddebugkey
+          GODOT_ANDROID_KEYSTORE_PASSWORD: android
         run: |
           ./tools/build_apk.sh "${BUILD_MODE}"
 

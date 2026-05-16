@@ -329,7 +329,7 @@ func _draw() -> void:
 		elif enemy_type == "spitter":
 			enemy_color = Color("#8fffb4")
 		draw_circle(enemy_position, 16, enemy_color)
-		var hp_ratio := clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
+		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 1))
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34 * hp_ratio, 4), Color("#69f2b0"))
 
@@ -339,7 +339,7 @@ func _draw() -> void:
 		draw_circle(boss_position, 66, Color(0.9, 0.2, 0.4, 0.18))
 		var boss_hp := float(boss.get("hp", 1.0))
 		var boss_max_hp := float(boss.get("max_hp", 1.0))
-		var boss_ratio := clamp(boss_hp / max(boss_max_hp, 0.001), 0.0, 1.0)
+		var boss_ratio: float = clamp(boss_hp / max(boss_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60, 14), Color(0.07, 0.05, 0.12, 1))
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60 * boss_ratio, 14), Color("#ff6f95"))
 
@@ -471,7 +471,7 @@ func _update_feedback_overlay(delta: float) -> void:
 func _apply_hud_visual_mode() -> void:
 	if hud_root == null:
 		return
-	var clamped_scale := clamp(ui_scale, 0.8, 1.3)
+	var clamped_scale: float = clamp(ui_scale, 0.8, 1.3)
 	hud_root.scale = Vector2(clamped_scale, clamped_scale)
 	if high_contrast_mode:
 		status_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.55))
@@ -1546,16 +1546,16 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	drones_defeated = int(snapshot.get("drones_defeated", drones_defeated))
 	pages_collected_this_run = int(snapshot.get("pages_collected_this_run", pages_collected_this_run))
 	boss_spawned = bool(snapshot.get("boss_spawned", false))
-	var loaded_inventory := snapshot.get("inventory", {})
+	var loaded_inventory: Dictionary = snapshot.get("inventory", {})
 	if typeof(loaded_inventory) == TYPE_DICTIONARY:
 		inventory = loaded_inventory
-	var loaded_crafted := snapshot.get("crafted_items", {})
+	var loaded_crafted: Dictionary = snapshot.get("crafted_items", {})
 	if typeof(loaded_crafted) == TYPE_DICTIONARY:
 		crafted_items = loaded_crafted
-	var loaded_entries := snapshot.get("bestiary_entries", {})
+	var loaded_entries: Dictionary = snapshot.get("bestiary_entries", {})
 	if typeof(loaded_entries) == TYPE_DICTIONARY:
 		bestiary_entries = loaded_entries
-	var loaded_objectives := snapshot.get("objectives", [])
+	var loaded_objectives: Array = snapshot.get("objectives", [])
 	if typeof(loaded_objectives) == TYPE_ARRAY:
 		objectives = loaded_objectives
 	companion_select.select(0 if companion_id == "keeley" else 1)

@@ -54,6 +54,8 @@ Quick path for local APK generation:
 - Install directly on tablets for playtesting.
 - Or use CI artifacts from `Android APK CI` workflow runs in GitHub Actions.
 - For permanent hosted links, use `Android APK Release` workflow outputs in GitHub Releases.
+- CI workflows use a generated debug keystore by default (testing/distribution only).
+- For Play Store, switch workflow to your private release keystore + credentials.
 
 ### Play Store build (AAB)
 

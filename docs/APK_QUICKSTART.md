@@ -72,3 +72,6 @@ This repo also includes `.github/workflows/android-apk-release.yml`.
 Download permanent APK URLs from:
 
 - **GitHub -> Releases -> latest `apk-*` release -> Assets**
+
+> Note: CI currently signs with an auto-generated debug keystore for distribution testing.
+> For Play Store production signing, configure your release keystore/credentials in workflow secrets.
