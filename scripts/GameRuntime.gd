@@ -225,6 +225,7 @@ var wave_label: Label
 var boss_label: Label
 var combo_label: Label
 var dash_label: Label
+var perf_metrics_label: Label
 var companion_label: Label
 var loot_label: Label
 var rhino_timer_label: Label
@@ -281,6 +282,7 @@ var master_volume := 0.85
 var music_volume := 0.85
 var sfx_volume := 0.90
 var performance_mode := "balanced"
+var show_perf_hud := false
 var max_active_enemies := MAX_ACTIVE_ENEMIES
 var max_active_projectiles := MAX_ACTIVE_PROJECTILES
 var max_active_vfx_particles := MAX_ACTIVE_VFX_PARTICLES
@@ -754,6 +756,7 @@ func _apply_profile_bonuses() -> void:
 	music_volume = float(settings.get("music_volume", 0.85))
 	sfx_volume = float(settings.get("sfx_volume", 0.90))
 	performance_mode = String(settings.get("performance_mode", "balanced"))
+	show_perf_hud = bool(settings.get("show_perf_hud", false))
 	enemy_health_multiplier = 1.0
 	enemy_damage_multiplier = 1.0
 	enemy_spawn_multiplier = 1.0
@@ -1073,6 +1076,13 @@ func _build_hud() -> void:
 	dash_label.add_theme_font_size_override("font_size", 18)
 	dash_label.add_theme_color_override("font_color", Color(0.84, 0.96, 1.0))
 	hud_root.add_child(dash_label)
+
+	perf_metrics_label = Label.new()
+	perf_metrics_label.position = Vector2(20, 20)
+	perf_metrics_label.size = Vector2(520, 24)
+	perf_metrics_label.add_theme_font_size_override("font_size", 14)
+	perf_metrics_label.add_theme_color_override("font_color", Color(0.85, 0.95, 1.0))
+	hud_root.add_child(perf_metrics_label)
 
 	health_bar = ProgressBar.new()
 	health_bar.position = Vector2(20, 82)
@@ -2502,6 +2512,17 @@ func _update_hud() -> void:
 	rhino_button.modulate = Color(0.92, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
 	scavenge_button.modulate = Color(0.90, 0.96, 0.98 + 0.02 * ui_pulse, 1.0)
 	dash_button.modulate = Color(0.94, 0.94 + 0.06 * ui_pulse, 1.0, 1.0)
+	perf_metrics_label.visible = show_perf_hud
+	if show_perf_hud:
+		perf_metrics_label.text = "FPS:%d | Enemies:%d/%d | Projectiles:%d/%d | VFX:%d/%d" % [
+			Engine.get_frames_per_second(),
+			active_enemies.size(),
+			max_active_enemies,
+			enemy_projectiles.size(),
+			max_active_projectiles,
+			vfx_particles.size(),
+			max_active_vfx_particles
+		]
 
 	for i in hotbar_buttons.size():
 		hotbar_buttons[i].modulate = Color(1, 1, 1, 1)

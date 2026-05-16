@@ -13,6 +13,7 @@ required_files=(
   "docs/PLAYTEST_MATRIX.md"
   "docs/PLAY_STORE_LISTING_TEMPLATE.md"
   "docs/PRIVACY_POLICY_TEMPLATE.md"
+  "docs/RELEASE_CANDIDATE_CHECKLIST.md"
   "export_presets.cfg"
   ".github/workflows/android-apk.yml"
   ".github/workflows/android-aab.yml"
@@ -39,6 +40,12 @@ rg -q "GOOGLE_PLAY_PACKAGE_NAME" ".github/workflows/android-play-publish.yml" ||
 echo "[preflight] checking art pack manifests..."
 rg -q "assets/artpack" "docs/ART_PACK_MANIFEST.md" || {
   echo "[preflight] art pack manifest appears incomplete" >&2
+  exit 1
+}
+
+echo "[preflight] checking tool executability..."
+[[ -x "tools/preflight_release_check.sh" ]] || {
+  echo "[preflight] tools/preflight_release_check.sh is not executable" >&2
   exit 1
 }
 

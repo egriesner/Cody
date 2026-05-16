@@ -24,6 +24,7 @@ var settings_music_slider: HSlider
 var settings_sfx_slider: HSlider
 var settings_vibration_toggle: CheckButton
 var settings_hit_flash_toggle: CheckButton
+var settings_perf_hud_toggle: CheckButton
 var settings_ui_scale_slider: HSlider
 var settings_high_contrast_toggle: CheckButton
 var difficulty_option: OptionButton
@@ -274,6 +275,11 @@ func _build_settings_panel() -> void:
 	performance_option.add_item("Performance", 2)
 	settings_panel.add_child(performance_option)
 
+	settings_perf_hud_toggle = CheckButton.new()
+	settings_perf_hud_toggle.text = "Show Perf HUD In-Run"
+	settings_perf_hud_toggle.position = Vector2(470, 338)
+	settings_panel.add_child(settings_perf_hud_toggle)
+
 	var save_button := Button.new()
 	save_button.text = "Save Settings"
 	save_button.position = Vector2(112, 420)
@@ -378,6 +384,7 @@ func _refresh_menu() -> void:
 	settings_sfx_slider.value = float(settings.get("sfx_volume", 0.90))
 	settings_vibration_toggle.button_pressed = bool(settings.get("vibration", true))
 	settings_hit_flash_toggle.button_pressed = bool(settings.get("show_hit_flash", true))
+	settings_perf_hud_toggle.button_pressed = bool(settings.get("show_perf_hud", false))
 	settings_ui_scale_slider.value = float(settings.get("ui_scale", 1.0))
 	settings_high_contrast_toggle.button_pressed = bool(settings.get("high_contrast", false))
 	var difficulty := String(settings.get("difficulty", "normal"))
@@ -478,6 +485,7 @@ func _on_save_settings_pressed() -> void:
 	settings["sfx_volume"] = settings_sfx_slider.value
 	settings["vibration"] = settings_vibration_toggle.button_pressed
 	settings["show_hit_flash"] = settings_hit_flash_toggle.button_pressed
+	settings["show_perf_hud"] = settings_perf_hud_toggle.button_pressed
 	settings["ui_scale"] = settings_ui_scale_slider.value
 	settings["high_contrast"] = settings_high_contrast_toggle.button_pressed
 	match difficulty_option.selected:

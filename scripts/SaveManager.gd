@@ -36,6 +36,7 @@ static func default_profile() -> Dictionary:
 			"vibration": true,
 			"difficulty": "normal",
 			"performance_mode": "balanced",
+			"show_perf_hud": false,
 			"show_hit_flash": true,
 			"ui_scale": 1.0,
 			"high_contrast": false
