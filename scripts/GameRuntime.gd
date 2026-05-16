@@ -21,6 +21,8 @@ enum InputMode {
 
 const INVALID_TOUCH_ID := -1
 const MOUSE_TOUCH_ID := 9001
+const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
+const ICON_PATH := "res://assets/icon.svg"
 
 var profile: Dictionary = {}
 var config: Dictionary = {}
@@ -60,6 +62,8 @@ var right_touch_start_msec := 0
 
 var left_dead_zone_px := 100.0
 var right_dead_zone_px := 100.0
+var configured_left_dead_zone_px := 100.0
+var configured_right_dead_zone_px := 100.0
 var left_spawn_rect := Rect2()
 var right_spawn_rect := Rect2()
 var viewport_size := Vector2.ZERO
@@ -203,6 +207,9 @@ var feedback_flash_alpha := 0.0
 var feedback_flash_decay := 0.0
 var ui_scale := 1.0
 var high_contrast_mode := false
+var concept_bg_texture: Texture2D
+var player_sprite_texture: Texture2D
+var enemy_sprite_texture: Texture2D
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -213,6 +220,7 @@ func _ready() -> void:
 	randomize()
 	_load_config()
 	_apply_profile_bonuses()
+	_load_visual_assets()
 	_setup_feedback_bus()
 	_build_hud()
 	_apply_hud_visual_mode()
@@ -235,12 +243,20 @@ func _ready() -> void:
 	_update_hud()
 
 
+func _load_visual_assets() -> void:
+	if ResourceLoader.exists(CONCEPT_BG_PATH):
+		concept_bg_texture = load(CONCEPT_BG_PATH) as Texture2D
+	if ResourceLoader.exists(ICON_PATH):
+		player_sprite_texture = load(ICON_PATH) as Texture2D
+		enemy_sprite_texture = player_sprite_texture
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_SIZE_CHANGED:
 		_recalculate_input_regions()
 
 
-func _unhandled_input(event: InputEvent) -> void:
+func _input(event: InputEvent) -> void:
 	if game_ended:
 		return
 	if is_soft_paused:
@@ -300,7 +316,20 @@ func _draw() -> void:
 	var bg_color := Color("#0b1022")
 	if high_contrast_mode:
 		bg_color = Color("#05070f")
-	draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
+	if concept_bg_texture != null:
+		draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.36))
+		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.68))
+	else:
+		draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
+
+	# Fixed thumb guides make touch zones obvious on tablets.
+	var left_hint_center := Vector2(screen_size.x * 0.16, screen_size.y * 0.82)
+	var right_hint_center := Vector2(screen_size.x * 0.84, screen_size.y * 0.82)
+	draw_circle(left_hint_center, 66, Color(0.27, 0.9, 1.0, 0.12))
+	draw_circle(left_hint_center, 26, Color(0.27, 0.9, 1.0, 0.18))
+	draw_circle(right_hint_center, 74, Color(0.80, 0.55, 1.0, 0.12))
+	draw_circle(right_hint_center, 26, Color(0.80, 0.55, 1.0, 0.18))
+
 	var dead_zone_alpha := 0.18 if not high_contrast_mode else 0.30
 	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
 	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
@@ -315,7 +344,11 @@ func _draw() -> void:
 		player_color = Color("#8af7ff")
 		draw_circle(player_position, 56, Color(0.42, 0.49, 1.0, 0.35))
 		draw_circle(player_position, 76, Color(0.33, 0.82, 1.0, 0.2))
-	draw_circle(player_position, 30, player_color)
+	if player_sprite_texture != null:
+		var player_size := Vector2(76, 76)
+		draw_texture_rect(player_sprite_texture, Rect2(player_position - player_size * 0.5, player_size), false, player_color)
+	else:
+		draw_circle(player_position, 30, player_color)
 	draw_line(player_position, player_position + player_direction * 44, Color("#d8fbff"), 4.0)
 
 	for enemy in active_enemies:
@@ -328,14 +361,22 @@ func _draw() -> void:
 			enemy_color = Color("#ff8f89")
 		elif enemy_type == "spitter":
 			enemy_color = Color("#8fffb4")
-		draw_circle(enemy_position, 16, enemy_color)
+		if enemy_sprite_texture != null:
+			var enemy_size := Vector2(36, 36)
+			draw_texture_rect(enemy_sprite_texture, Rect2(enemy_position - enemy_size * 0.5, enemy_size), false, enemy_color)
+		else:
+			draw_circle(enemy_position, 16, enemy_color)
 		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 1))
 		draw_rect(Rect2(enemy_position.x - 17, enemy_position.y - 28, 34 * hp_ratio, 4), Color("#69f2b0"))
 
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
-		draw_circle(boss_position, 46, Color("#ff6f95"))
+		if enemy_sprite_texture != null:
+			var boss_size := Vector2(108, 108)
+			draw_texture_rect(enemy_sprite_texture, Rect2(boss_position - boss_size * 0.5, boss_size), false, Color("#ff6f95"))
+		else:
+			draw_circle(boss_position, 46, Color("#ff6f95"))
 		draw_circle(boss_position, 66, Color(0.9, 0.2, 0.4, 0.18))
 		var boss_hp := float(boss.get("hp", 1.0))
 		var boss_max_hp := float(boss.get("max_hp", 1.0))
@@ -355,8 +396,10 @@ func _load_config() -> void:
 
 	var input_layout: Dictionary = config.get("inputLayout", {})
 	var deadzones: Dictionary = input_layout.get("edgeDeadZonesPx", {})
-	left_dead_zone_px = float(deadzones.get("left", left_dead_zone_px))
-	right_dead_zone_px = float(deadzones.get("right", right_dead_zone_px))
+	configured_left_dead_zone_px = float(deadzones.get("left", configured_left_dead_zone_px))
+	configured_right_dead_zone_px = float(deadzones.get("right", configured_right_dead_zone_px))
+	left_dead_zone_px = configured_left_dead_zone_px
+	right_dead_zone_px = configured_right_dead_zone_px
 
 	var wave_combat: Dictionary = config.get("waveCombat", {})
 	wave_base_enemies = int(wave_combat.get("baseWaveEnemies", wave_base_enemies))
@@ -803,6 +846,8 @@ func _build_tutorial_panel() -> void:
 
 func _recalculate_input_regions() -> void:
 	viewport_size = get_viewport_rect().size
+	left_dead_zone_px = min(configured_left_dead_zone_px, viewport_size.x * 0.09)
+	right_dead_zone_px = min(configured_right_dead_zone_px, viewport_size.x * 0.09)
 	var input_layout: Dictionary = config.get("inputLayout", {})
 	left_spawn_rect = _rect_from_norm(input_layout.get("leftJoystick", {}).get("spawnArea", {}), Rect2(0, viewport_size.y * 0.54, viewport_size.x * 0.4, viewport_size.y * 0.4))
 	right_spawn_rect = _rect_from_norm(input_layout.get("rightJoystick", {}).get("spawnArea", {}), Rect2(viewport_size.x * 0.6, viewport_size.y * 0.52, viewport_size.x * 0.35, viewport_size.y * 0.42))
@@ -833,15 +878,19 @@ func _rect_from_norm(source: Dictionary, fallback: Rect2) -> Rect2:
 
 func _on_touch(touch_id: int, pressed: bool, position: Vector2) -> void:
 	if pressed:
+		if _is_over_interactive_ui(position):
+			return
 		if _is_dead_zone(position):
 			return
-		if left_touch_id == INVALID_TOUCH_ID and left_spawn_rect.has_point(position):
+		var allow_left := left_spawn_rect.has_point(position) or (position.x < viewport_size.x * 0.48 and position.y > viewport_size.y * 0.34)
+		if left_touch_id == INVALID_TOUCH_ID and allow_left:
 			left_touch_id = touch_id
 			left_origin = position
 			left_vector = Vector2.ZERO
 			_show_stick(left_stick_base, left_stick_knob, left_origin)
 			return
-		if right_touch_id == INVALID_TOUCH_ID and right_spawn_rect.has_point(position):
+		var allow_right := right_spawn_rect.has_point(position) or (position.x >= viewport_size.x * 0.52 and position.y > viewport_size.y * 0.34)
+		if right_touch_id == INVALID_TOUCH_ID and allow_right:
 			right_touch_id = touch_id
 			right_origin = position
 			right_touch_start = position
@@ -892,6 +941,31 @@ func _update_knob(knob: Panel, origin: Vector2, offset: Vector2) -> void:
 
 func _is_dead_zone(position: Vector2) -> bool:
 	return position.x < left_dead_zone_px or position.x > viewport_size.x - right_dead_zone_px
+
+
+func _is_over_interactive_ui(position: Vector2) -> bool:
+	var controls: Array[Control] = [
+		action_button,
+		rhino_button,
+		travel_biome_button,
+		scavenge_button,
+		recipe_select,
+		craft_button,
+		gain_page_button,
+		pause_button,
+		companion_select,
+		keeley_upgrade_toggle
+	]
+	for control in controls:
+		if control != null and control.visible and control.get_global_rect().has_point(position):
+			return true
+	if pause_panel != null and pause_panel.visible and pause_panel.get_global_rect().has_point(position):
+		return true
+	if end_panel != null and end_panel.visible and end_panel.get_global_rect().has_point(position):
+		return true
+	if tutorial_panel != null and tutorial_panel.visible and tutorial_panel.get_global_rect().has_point(position):
+		return true
+	return false
 
 
 func _update_survival(delta: float) -> void:
