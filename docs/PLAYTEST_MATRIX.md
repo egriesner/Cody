@@ -53,6 +53,7 @@ Use this matrix before external tester distribution.
   - UI scale
   - high contrast mode
   - volume value
+  - difficulty-based enemy pressure scaling
 
 ## Stability Checks
 
@@ -62,3 +63,6 @@ Use this matrix before external tester distribution.
 - Restart-from-end-panel does not corrupt profile data.
 - Spitter ranged projectiles spawn, despawn, and damage without stutter or leaked entities.
 - Combo multiplier UI updates in combat and cleanly resets after timeout/taking damage.
+- Easy/Normal/Hard each feel distinct:
+  - Easy lowers incoming pressure and increases loot comfort.
+  - Hard increases enemy pressure while preserving control responsiveness.

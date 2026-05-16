@@ -185,6 +185,12 @@ var dash_duration_seconds := 0.22
 var combo_timeout_seconds := 4.0
 var spitter_projectile_speed := 420.0
 var spitter_projectile_damage := 8.0
+var difficulty_name := "normal"
+var enemy_health_multiplier := 1.0
+var enemy_damage_multiplier := 1.0
+var enemy_spawn_multiplier := 1.0
+var enemy_speed_multiplier := 1.0
+var loot_gain_multiplier := 1.0
 var biome_names := PackedStringArray(["Scrap Dunes", "Whispering Archives", "Plasma Crater"])
 var current_biome_index := 0
 
@@ -622,14 +628,30 @@ func _apply_profile_bonuses() -> void:
 
 	var settings: Dictionary = profile.get("settings", {})
 	var difficulty := String(settings.get("difficulty", "normal"))
+	difficulty_name = difficulty
 	ui_scale = float(settings.get("ui_scale", 1.0))
 	high_contrast_mode = bool(settings.get("high_contrast", false))
+	enemy_health_multiplier = 1.0
+	enemy_damage_multiplier = 1.0
+	enemy_spawn_multiplier = 1.0
+	enemy_speed_multiplier = 1.0
+	loot_gain_multiplier = 1.0
 	if difficulty == "easy":
 		player_lives = 4
 		max_lives = 4
+		enemy_health_multiplier = 0.86
+		enemy_damage_multiplier = 0.78
+		enemy_spawn_multiplier = 0.84
+		enemy_speed_multiplier = 0.93
+		loot_gain_multiplier = 1.18
 	elif difficulty == "hard":
 		player_lives = 2
 		max_lives = 2
+		enemy_health_multiplier = 1.22
+		enemy_damage_multiplier = 1.34
+		enemy_spawn_multiplier = 1.16
+		enemy_speed_multiplier = 1.08
+		loot_gain_multiplier = 0.90
 
 
 func _setup_feedback_bus() -> void:
@@ -1607,7 +1629,12 @@ func _update_wave_system(delta: float) -> void:
 		wave_active = false
 		wave_wait_tick = 3.5
 		_grant_xp(35 + wave_number * 5)
-		_scavenge_resources(3 + wave_number, 1 + int(wave_number / 2), 1, 1)
+		_scavenge_resources(
+			_scaled_loot_value(3 + wave_number),
+			_scaled_loot_value(1 + int(wave_number / 2)),
+			_scaled_loot_value(1),
+			_scaled_loot_value(1)
+		)
 		status_label.text = "Wave %d cleared!" % wave_number
 
 
@@ -1615,7 +1642,8 @@ func _start_next_wave() -> void:
 	wave_number += 1
 	wave_active = true
 	enemy_projectiles.clear()
-	wave_spawn_remaining = wave_base_enemies + wave_number * wave_enemy_growth
+	var base_spawn := wave_base_enemies + wave_number * wave_enemy_growth
+	wave_spawn_remaining = maxi(1, int(round(float(base_spawn) * enemy_spawn_multiplier)))
 	wave_spawn_tick = 0.15
 	status_label.text = "Wave %d started." % wave_number
 
@@ -1627,8 +1655,8 @@ func _spawn_enemy() -> void:
 	enemy_position.y = clamp(enemy_position.y, 360.0, viewport_size.y - 100.0)
 
 	var enemy_type := "drone"
-	var hp := 45.0 + (wave_number * 4.0)
-	var speed := 72.0 + (wave_number * 2.5)
+	var hp := (45.0 + (wave_number * 4.0)) * enemy_health_multiplier
+	var speed := (72.0 + (wave_number * 2.5)) * enemy_speed_multiplier
 	var roll := randf()
 	if roll > 0.85:
 		enemy_type = "brute"
@@ -1716,7 +1744,7 @@ func _update_enemy_projectiles(delta: float) -> void:
 			to_remove.append(i)
 			continue
 		if position.distance_to(player_position) <= 34.0:
-			_apply_player_damage(spitter_projectile_damage, "Spitter acid bolt")
+			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier, "Spitter acid bolt")
 			to_remove.append(i)
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 
@@ -1734,7 +1762,7 @@ func _update_enemy_contacts(delta: float) -> void:
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
 		if boss_position.distance_to(player_position) <= 72.0:
-			_apply_player_damage(boss_contact_damage, "Overlord slam")
+			_apply_player_damage(boss_contact_damage * enemy_damage_multiplier, "Overlord slam")
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 			return
 
@@ -1745,7 +1773,7 @@ func _update_enemy_contacts(delta: float) -> void:
 		var damage := 6.5
 		if enemy.get("type", "drone") == "brute":
 			damage = 11.0
-		_apply_player_damage(damage, "Vexian " + String(enemy.get("type", "drone")))
+		_apply_player_damage(damage * enemy_damage_multiplier, "Vexian " + String(enemy.get("type", "drone")))
 		enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 		break
 
@@ -1804,6 +1832,8 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 		if randf() < 0.45:
 			crystal_gain += 1
 
+	scrap_gain = _scaled_loot_value(scrap_gain)
+	crystal_gain = _scaled_loot_value(crystal_gain)
 	_scavenge_resources(scrap_gain, crystal_gain, 0, 0)
 	var base_xp := 8 + wave_number
 	var xp_gain := int(round(float(base_xp) * combo_multiplier))
@@ -1816,7 +1846,11 @@ func _update_passive_scavenge(delta: float) -> void:
 		return
 	passive_scavenge_tick = 0.0
 	var moving_bonus := 1 if left_vector.length() > 0.2 else 0
-	_scavenge_resources(1 + moving_bonus, 1 if randf() > 0.55 else 0, 0, 0)
+	_scavenge_resources(_scaled_loot_value(1 + moving_bonus), _scaled_loot_value(1 if randf() > 0.55 else 0), 0, 0)
+
+
+func _scaled_loot_value(amount: int) -> int:
+	return maxi(0, int(round(float(amount) * loot_gain_multiplier)))
 
 
 func _scavenge_resources(scrap: int, crystals: int, melons: int, berries: int) -> void:
@@ -2005,7 +2039,7 @@ func _update_boss_system(delta: float) -> void:
 	if boss_attack_tick <= 0.0:
 		boss_attack_tick = 2.4
 		if boss_position.distance_to(player_position) < 180.0:
-			_apply_player_damage(boss_shockwave_damage, "Overlord shockwave")
+			_apply_player_damage(boss_shockwave_damage * enemy_damage_multiplier, "Overlord shockwave")
 		else:
 			_spawn_enemy()
 			_spawn_enemy()
@@ -2196,7 +2230,13 @@ func _update_hud() -> void:
 	hunger_bar.max_value = max_hunger
 	health_bar.value = health
 	hunger_bar.value = hunger
-	state_label.text = "State: %s | Input: %s | Lives: %d/%d" % [_state_text(player_state), _input_text(input_mode), player_lives, max_lives]
+	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s" % [
+		_state_text(player_state),
+		_input_text(input_mode),
+		player_lives,
+		max_lives,
+		difficulty_name.capitalize()
+	]
 	biome_label.text = "Biome: %s" % biome_names[current_biome_index]
 	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]
 	boss_label.text = "Boss: Overlord Vex engaged" if boss_active else "Boss: pending"
@@ -2369,10 +2409,10 @@ func _on_craft_pressed() -> void:
 func _on_scavenge_pressed() -> void:
 	if game_ended:
 		return
-	var scrap_gain := randi_range(2, 5)
-	var crystal_gain := randi_range(1, 3)
-	var melon_gain := 1 if randf() > 0.55 else 0
-	var berry_gain := 1 if randf() > 0.45 else 0
+	var scrap_gain := _scaled_loot_value(randi_range(2, 5))
+	var crystal_gain := _scaled_loot_value(randi_range(1, 3))
+	var melon_gain := _scaled_loot_value(1 if randf() > 0.55 else 0)
+	var berry_gain := _scaled_loot_value(1 if randf() > 0.45 else 0)
 	_scavenge_resources(scrap_gain, crystal_gain, melon_gain, berry_gain)
 	_grant_xp(10)
 	status_label.text = "Scavenge burst: +%d scrap, +%d crystals." % [scrap_gain, crystal_gain]
