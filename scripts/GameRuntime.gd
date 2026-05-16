@@ -26,6 +26,7 @@ var config: Dictionary = {}
 var run_elapsed_seconds := 0.0
 var game_ended := false
 var is_soft_paused := false
+var pending_result: Dictionary = {}
 
 var player_state: int = PlayerState.NORMAL
 var input_mode: int = InputMode.ATTACK_MODE
@@ -1397,8 +1398,7 @@ func _end_run(victory: bool, reason: String) -> void:
 		drones_defeated,
 		_format_time(run_elapsed_seconds)
 	]
-	var result := _build_session_summary(victory, {}, reason)
-	session_finished.emit(victory, result)
+	pending_result = _build_session_summary(victory, {}, reason)
 
 
 func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String) -> Dictionary:
@@ -1602,17 +1602,17 @@ func _on_end_run_pressed() -> void:
 
 
 func _on_retry_pressed() -> void:
-	var fresh_profile := profile.duplicate(true)
-	var parent := get_parent()
-	if parent == null:
-		return
-	var next_run := GameRuntime.new()
-	next_run.set_profile(fresh_profile)
-	parent.add_child(next_run)
+	var result := pending_result.duplicate(true)
+	if result.is_empty():
+		result = _build_session_summary(false, {}, "Run restarted from end panel")
+	result["request_restart"] = true
+	session_finished.emit(bool(result.get("victory", false)), result)
 	queue_free()
 
 
 func _on_return_menu_pressed() -> void:
-	var result := _build_session_summary(end_title.text == "VICTORY", {}, "Run finished")
-	session_finished.emit(end_title.text == "VICTORY", result)
+	var result := pending_result.duplicate(true)
+	if result.is_empty():
+		result = _build_session_summary(end_title.text == "VICTORY", {}, "Run finished")
+	session_finished.emit(bool(result.get("victory", false)), result)
 	queue_free()

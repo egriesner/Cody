@@ -209,6 +209,7 @@ func _launch_runtime(use_continue_snapshot: bool) -> void:
 
 
 func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
+	var restart_requested := bool(summary.get("request_restart", false))
 	profile = SAVE_MANAGER_SCRIPT.apply_session_result(profile, summary)
 	_save_profile()
 	_refresh_menu()
@@ -217,6 +218,8 @@ func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
 	if active_runtime != null and is_instance_valid(active_runtime):
 		active_runtime = null
 	status_label.text = "Run complete: %s" % ("Victory" if victory else "Session ended")
+	if restart_requested:
+		_launch_runtime(false)
 
 
 func _on_new_run_pressed() -> void:
