@@ -51,3 +51,12 @@ Release builds require signing setup in the Godot Android export preset.
 ```bash
 GODOT_BIN=/path/to/godot4 ./tools/build_apk.sh debug
 ```
+
+## 6) Automatic APK builds on GitHub
+
+This repo now includes `.github/workflows/android-apk.yml`.
+
+- Every push to `main` and `cursor/*` builds an APK artifact.
+- You can also run it manually from **Actions -> Android APK CI -> Run workflow**.
+- Download from:
+  - **GitHub -> Actions -> Android APK CI -> latest run -> Artifacts**

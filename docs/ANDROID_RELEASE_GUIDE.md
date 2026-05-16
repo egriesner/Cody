@@ -52,6 +52,7 @@ Quick path for local APK generation:
 - Use Android export preset path:
   - `build/rift-bestiary-protocol.apk`
 - Install directly on tablets for playtesting.
+- Or use CI artifacts from `Android APK CI` workflow runs in GitHub Actions.
 
 ### Play Store build (AAB)
 
