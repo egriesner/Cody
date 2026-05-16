@@ -2133,6 +2133,8 @@ func _end_run(victory: bool, reason: String) -> void:
 		drones_defeated,
 		_format_time(run_elapsed_seconds)
 	]
+	var preview_score := _compute_run_score(victory)
+	end_subtitle.text += "\nRun Score: %d | Rank: %s" % [preview_score, _score_rank(preview_score)]
 	end_subtitle.text += "\nMax combo: x%.2f | Dash uses: %d" % [max_combo_reached, dash_uses_this_run]
 	pending_result = _build_session_summary(victory, {}, reason)
 
@@ -2140,6 +2142,8 @@ func _end_run(victory: bool, reason: String) -> void:
 func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String) -> Dictionary:
 	var bank_scrap_gain := int(inventory.get("human_scrap", 0)) / 4
 	var bank_crystal_gain := int(inventory.get("alien_crystals", 0)) / 5
+	var run_score := _compute_run_score(victory)
+	var rank := _score_rank(run_score)
 	return {
 		"victory": victory,
 		"reason": reason,
@@ -2151,11 +2155,33 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"bank_scrap_gain": bank_scrap_gain,
 		"bank_crystal_gain": bank_crystal_gain,
 		"skins_unlocked": skins_unlocked,
+		"run_score": run_score,
+		"rank": rank,
 		"max_combo_reached": max_combo_reached,
 		"dash_uses": dash_uses_this_run,
 		"tutorial_completed": tutorial_completed_this_session or bool(profile.get("tutorial_completed", false)),
 		"continue_snapshot": snapshot
 	}
+
+
+func _compute_run_score(victory: bool) -> int:
+	var score := wave_number * 100
+	score += drones_defeated * 4
+	score += int(round(max_combo_reached * 120.0))
+	score += pages_collected_this_run * 55
+	score += int(health)
+	score += 450 if victory else 0
+	return maxi(score, 0)
+
+
+func _score_rank(score: int) -> String:
+	if score >= 2200:
+		return "S"
+	if score >= 1500:
+		return "A"
+	if score >= 900:
+		return "B"
+	return "C"
 
 
 func _format_time(seconds: float) -> String:

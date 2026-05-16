@@ -18,6 +18,10 @@ static func default_profile() -> Dictionary:
 		"total_wins": 0,
 		"best_wave": 0,
 		"best_time_seconds": 0,
+		"best_run_score": 0,
+		"best_run_rank": "C",
+		"best_combo": 1.0,
+		"total_dash_uses": 0,
 		"total_drones_defeated": 0,
 		"total_bestiary_pages": 0,
 		"unlocked_skins": 1,
@@ -78,6 +82,18 @@ static func apply_session_result(profile: Dictionary, result: Dictionary) -> Dic
 	var best_time := int(updated.get("best_time_seconds", 0))
 	if best_time == 0 or duration > best_time:
 		updated["best_time_seconds"] = duration
+
+	var run_score := int(result.get("run_score", 0))
+	updated["best_run_score"] = maxi(int(updated.get("best_run_score", 0)), run_score)
+	var rank_priority := {"C": 0, "B": 1, "A": 2, "S": 3}
+	var best_rank := String(updated.get("best_run_rank", "C"))
+	var new_rank := String(result.get("rank", "C"))
+	if int(rank_priority.get(new_rank, 0)) > int(rank_priority.get(best_rank, 0)):
+		updated["best_run_rank"] = new_rank
+	var best_combo := float(updated.get("best_combo", 1.0))
+	var run_combo := float(result.get("max_combo_reached", 1.0))
+	updated["best_combo"] = max(best_combo, run_combo)
+	updated["total_dash_uses"] = int(updated.get("total_dash_uses", 0)) + int(result.get("dash_uses", 0))
 
 	updated["total_drones_defeated"] = int(updated.get("total_drones_defeated", 0)) + int(result.get("drones_defeated", 0))
 	updated["total_bestiary_pages"] = int(updated.get("total_bestiary_pages", 0)) + int(result.get("bestiary_pages_collected", 0))

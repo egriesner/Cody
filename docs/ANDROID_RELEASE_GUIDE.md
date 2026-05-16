@@ -69,6 +69,7 @@ Quick path for local APK generation:
 - Landscape screenshots from real tablet gameplay.
 - Feature graphic and icon.
 - Privacy policy URL.
+- Data Safety form completed in Play Console.
 - Increment `version/code` for every new upload.
 - Target API level matching current Play requirements.
 - Content rating questionnaire completed.
@@ -138,3 +139,10 @@ Then run:
 - **Actions -> Android Play Store Publish -> Run workflow**
 - Select track (`internal`, `alpha`, `beta`, `production`)
 - Select release status (`completed`, `draft`, `inProgress`)
+
+## 11) Store Listing and Policy Templates
+
+Use these project templates to speed submission preparation:
+
+- `docs/PLAY_STORE_LISTING_TEMPLATE.md`
+- `docs/PRIVACY_POLICY_TEMPLATE.md`

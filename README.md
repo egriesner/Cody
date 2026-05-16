@@ -62,6 +62,9 @@ Developer/Studio: **Code Max Studios**
 - Daily reward claim loop with profile streak tracking
 - Auto-checkpoint continue snapshots during active runs
 - Overlord Vex boss phase unlock after progression gates
+- Dash burst mechanic with cooldown and evade timing
+- Combo multiplier system with XP scaling and run rank scoring
+- Spitter ranged projectiles for improved encounter pressure
 - Victory/defeat flow with run summary panel
 - Profile save/continue persistence via `user://rift_profile.json`
 
@@ -70,6 +73,7 @@ Developer/Studio: **Code Max Studios**
 See `docs/ANDROID_RELEASE_GUIDE.md` for keystore setup, export steps, sharing APKs, and Play Store app bundle publishing.
 Use `docs/PLAYTEST_MATRIX.md` as the final QA checklist before external tester rollout.
 Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK and AAB build commands.
+Use `docs/PLAY_STORE_LISTING_TEMPLATE.md` and `docs/PRIVACY_POLICY_TEMPLATE.md` to finalize Play listing metadata and policy text.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
 GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.
 GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.
