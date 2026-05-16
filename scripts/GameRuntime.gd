@@ -210,6 +210,8 @@ var high_contrast_mode := false
 var concept_bg_texture: Texture2D
 var player_sprite_texture: Texture2D
 var enemy_sprite_texture: Texture2D
+var top_hud_panel: Panel
+var bottom_hud_panel: Panel
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -314,13 +316,15 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var screen_size := get_viewport_rect().size
 	var bg_color := Color("#0b1022")
+	var pulse := 0.70 + 0.30 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 420.0))
 	if high_contrast_mode:
 		bg_color = Color("#05070f")
 	if concept_bg_texture != null:
-		draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.36))
-		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.68))
+		draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.42))
+		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.60))
 	else:
 		draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
+	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.04, 0.18, 0.32, 0.06 + 0.04 * pulse))
 
 	# Fixed thumb guides make touch zones obvious on tablets.
 	var left_hint_center := Vector2(screen_size.x * 0.16, screen_size.y * 0.82)
@@ -330,12 +334,12 @@ func _draw() -> void:
 	draw_circle(right_hint_center, 74, Color(0.80, 0.55, 1.0, 0.12))
 	draw_circle(right_hint_center, 26, Color(0.80, 0.55, 1.0, 0.18))
 
-	var dead_zone_alpha := 0.18 if not high_contrast_mode else 0.30
-	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
-	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(1, 0.2, 0.35, dead_zone_alpha))
-	draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.08), true)
-	draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.08), true)
-	draw_rect(Rect2(0, 70, screen_size.x, 8), Color(0.26, 0.85, 1.0, 0.4))
+	var dead_zone_alpha := 0.08 if not high_contrast_mode else 0.20
+	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(0.30, 0.76, 1.0, dead_zone_alpha))
+	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(0.85, 0.50, 1.0, dead_zone_alpha))
+	draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.06), true)
+	draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.06), true)
+	draw_rect(Rect2(0, 70, screen_size.x, 8), Color(0.26, 0.85, 1.0, 0.28))
 
 	var player_color := Color("#76efff")
 	if player_state == PlayerState.EXHAUSTED:
@@ -383,6 +387,7 @@ func _draw() -> void:
 		var boss_ratio: float = clamp(boss_hp / max(boss_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60, 14), Color(0.07, 0.05, 0.12, 1))
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60 * boss_ratio, 14), Color("#ff6f95"))
+		draw_rect(Rect2(screen_size.x * 0.20, 84, screen_size.x * 0.60 * pulse * boss_ratio, 2), Color(1.0, 0.84, 0.94, 0.86))
 
 
 func _load_config() -> void:
@@ -516,6 +521,9 @@ func _apply_hud_visual_mode() -> void:
 		return
 	var clamped_scale: float = clamp(ui_scale, 0.8, 1.3)
 	hud_root.scale = Vector2(clamped_scale, clamped_scale)
+
+	_apply_ui_skin()
+
 	if high_contrast_mode:
 		status_label.add_theme_color_override("font_color", Color(1.0, 0.96, 0.55))
 		state_label.add_theme_color_override("font_color", Color(1.0, 1.0, 1.0))
@@ -526,6 +534,92 @@ func _apply_hud_visual_mode() -> void:
 		quest_label.remove_theme_color_override("font_color")
 
 
+func _make_stylebox(bg: Color, border: Color, border_size: int = 2, radius: int = 12) -> StyleBoxFlat:
+	var sb := StyleBoxFlat.new()
+	sb.bg_color = bg
+	sb.border_color = border
+	sb.set_border_width_all(border_size)
+	sb.set_corner_radius_all(radius)
+	return sb
+
+
+func _style_button_control(control: Control) -> void:
+	var normal := _make_stylebox(Color(0.08, 0.15, 0.30, 0.78), Color(0.26, 0.87, 1.0, 0.95), 2, 12)
+	var hover := _make_stylebox(Color(0.10, 0.19, 0.36, 0.86), Color(0.58, 0.42, 1.0, 0.95), 2, 12)
+	var pressed := _make_stylebox(Color(0.06, 0.11, 0.23, 0.92), Color(0.40, 0.96, 1.0, 0.95), 2, 12)
+	var disabled := _make_stylebox(Color(0.08, 0.10, 0.16, 0.55), Color(0.24, 0.30, 0.44, 0.75), 1, 12)
+
+	control.add_theme_stylebox_override("normal", normal)
+	control.add_theme_stylebox_override("hover", hover)
+	control.add_theme_stylebox_override("pressed", pressed)
+	control.add_theme_stylebox_override("disabled", disabled)
+	control.add_theme_color_override("font_color", Color(0.88, 0.96, 1.0))
+	control.add_theme_color_override("font_hover_color", Color(1.0, 1.0, 1.0))
+	control.add_theme_color_override("font_pressed_color", Color(0.84, 0.98, 1.0))
+	control.add_theme_font_size_override("font_size", 16)
+
+
+func _style_panel_children_recursive(parent: Node) -> void:
+	for child in parent.get_children():
+		if child is Button or child is OptionButton or child is CheckButton:
+			var interactive := child as Control
+			_style_button_control(interactive)
+		if child is Label:
+			var label := child as Label
+			label.add_theme_color_override("font_color", Color(0.86, 0.96, 1.0))
+		_style_panel_children_recursive(child)
+
+
+func _apply_ui_skin() -> void:
+	if top_hud_panel != null:
+		top_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.76), Color(0.23, 0.82, 1.0, 0.72), 2, 0))
+	if bottom_hud_panel != null:
+		bottom_hud_panel.add_theme_stylebox_override("panel", _make_stylebox(Color(0.03, 0.06, 0.14, 0.74), Color(0.55, 0.34, 0.98, 0.70), 2, 0))
+
+	var panels := [pause_panel, end_panel, tutorial_panel]
+	for p in panels:
+		if p != null:
+			p.add_theme_stylebox_override("panel", _make_stylebox(Color(0.04, 0.08, 0.18, 0.92), Color(0.31, 0.88, 1.0, 0.88), 2, 16))
+			_style_panel_children_recursive(p)
+
+	var controls := [
+		action_button,
+		rhino_button,
+		travel_biome_button,
+		scavenge_button,
+		craft_button,
+		gain_page_button,
+		pause_button,
+		companion_select,
+		recipe_select,
+		keeley_upgrade_toggle
+	]
+	for control in controls:
+		if control != null:
+			_style_button_control(control)
+
+	for button in hotbar_buttons:
+		if button != null:
+			_style_button_control(button)
+			button.add_theme_font_size_override("font_size", 15)
+
+	if health_bar != null:
+		health_bar.add_theme_stylebox_override("background", _make_stylebox(Color(0.03, 0.08, 0.17, 0.72), Color(0.20, 0.48, 0.84, 0.7), 1, 8))
+		health_bar.add_theme_stylebox_override("fill", _make_stylebox(Color(0.30, 0.98, 0.80, 0.94), Color(0.72, 1.0, 0.93, 0.95), 1, 8))
+	if hunger_bar != null:
+		hunger_bar.add_theme_stylebox_override("background", _make_stylebox(Color(0.03, 0.08, 0.17, 0.72), Color(0.20, 0.48, 0.84, 0.7), 1, 8))
+		hunger_bar.add_theme_stylebox_override("fill", _make_stylebox(Color(0.98, 0.38, 0.63, 0.94), Color(1.0, 0.74, 0.84, 0.95), 1, 8))
+
+	if left_stick_base != null:
+		left_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.16, 0.72, 1.0, 0.14), Color(0.37, 0.95, 1.0, 0.9), 2, 70))
+	if left_stick_knob != null:
+		left_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.45, 0.95, 1.0, 0.58), Color(0.84, 1.0, 1.0, 0.96), 2, 30))
+	if right_stick_base != null:
+		right_stick_base.add_theme_stylebox_override("panel", _make_stylebox(Color(0.62, 0.42, 1.0, 0.14), Color(0.84, 0.68, 1.0, 0.88), 2, 80))
+	if right_stick_knob != null:
+		right_stick_knob.add_theme_stylebox_override("panel", _make_stylebox(Color(0.84, 0.62, 1.0, 0.56), Color(1.0, 0.90, 1.0, 0.96), 2, 30))
+
+
 func _build_hud() -> void:
 	var canvas := CanvasLayer.new()
 	add_child(canvas)
@@ -533,30 +627,47 @@ func _build_hud() -> void:
 	hud_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	canvas.add_child(hud_root)
 
+	top_hud_panel = Panel.new()
+	top_hud_panel.position = Vector2(0, 0)
+	top_hud_panel.size = Vector2(1920, 440)
+	top_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(top_hud_panel)
+
+	bottom_hud_panel = Panel.new()
+	bottom_hud_panel.position = Vector2(0, 882)
+	bottom_hud_panel.size = Vector2(1920, 198)
+	bottom_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud_root.add_child(bottom_hud_panel)
+
 	var title := Label.new()
 	title.text = "RIFT: The Bestiary Protocol - Code Max Studios"
 	title.position = Vector2(20, 12)
 	title.add_theme_font_size_override("font_size", 24)
+	title.add_theme_color_override("font_color", Color(0.80, 0.98, 1.0))
 	hud_root.add_child(title)
 
 	state_label = Label.new()
 	state_label.position = Vector2(20, 48)
 	state_label.add_theme_font_size_override("font_size", 18)
+	state_label.add_theme_color_override("font_color", Color(0.90, 0.98, 1.0))
 	hud_root.add_child(state_label)
 
 	biome_label = Label.new()
 	biome_label.position = Vector2(420, 48)
 	biome_label.add_theme_font_size_override("font_size", 18)
+	biome_label.add_theme_color_override("font_color", Color(0.82, 1.0, 0.96))
 	hud_root.add_child(biome_label)
 
 	wave_label = Label.new()
 	wave_label.position = Vector2(720, 48)
 	wave_label.add_theme_font_size_override("font_size", 18)
+	wave_label.add_theme_color_override("font_color", Color(0.99, 0.90, 1.0))
 	hud_root.add_child(wave_label)
 
 	boss_label = Label.new()
 	boss_label.position = Vector2(980, 48)
 	boss_label.add_theme_font_size_override("font_size", 18)
+	boss_label.add_theme_color_override("font_color", Color(1.0, 0.86, 0.92))
 	hud_root.add_child(boss_label)
 
 	health_bar = ProgressBar.new()
@@ -686,6 +797,7 @@ func _build_hud() -> void:
 	hotbar_title = Label.new()
 	hotbar_title.text = "Hotbar"
 	hotbar_title.position = Vector2(920, 942)
+	hotbar_title.add_theme_color_override("font_color", Color(0.82, 0.97, 1.0))
 	hud_root.add_child(hotbar_title)
 
 	hotbar_container = HBoxContainer.new()
@@ -737,6 +849,7 @@ func _build_hud() -> void:
 	_build_pause_panel()
 	_build_end_panel()
 	_build_tutorial_panel()
+	_apply_ui_skin()
 	_on_hotbar_selected(selected_hotbar_index)
 
 
@@ -1730,6 +1843,10 @@ func _update_hud() -> void:
 	quest_label.text = "Objectives: %s" % _objective_summary()
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
+	var ui_pulse := 0.88 + 0.12 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0))
+	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95, 1.0, 1.0)
+	rhino_button.modulate = Color(0.92, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
+	scavenge_button.modulate = Color(0.90, 0.96, 0.98 + 0.02 * ui_pulse, 1.0)
 
 	for i in hotbar_buttons.size():
 		hotbar_buttons[i].modulate = Color(1, 1, 1, 1)
