@@ -31,8 +31,11 @@ static func default_profile() -> Dictionary:
 		},
 		"settings": {
 			"master_volume": 0.85,
+			"music_volume": 0.85,
+			"sfx_volume": 0.90,
 			"vibration": true,
 			"difficulty": "normal",
+			"performance_mode": "balanced",
 			"show_hit_flash": true,
 			"ui_scale": 1.0,
 			"high_contrast": false

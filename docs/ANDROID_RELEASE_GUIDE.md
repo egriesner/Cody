@@ -82,6 +82,7 @@ Quick path for local APK generation:
 - Session pacing: frequent rewards and minimal long text.
 - Stable 60fps target on low/mid-tier tablets where possible.
 - Clear state feedback for `EXHAUSTED`, `EAT`, and `RHINO_CHARGE`.
+- Verify `performance_mode` presets (`quality`, `balanced`, `performance`) on real devices.
 
 ## 7) Full-Game Playtest Acceptance Gates
 

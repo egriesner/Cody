@@ -50,8 +50,11 @@ Use this matrix before external tester distribution.
 - Auto-checkpoint during active run updates continue data without manual save.
 - Settings persistence:
   - difficulty
+  - performance mode
   - vibration
   - hit flash
+  - music volume
+  - sfx volume
   - UI scale
   - high contrast mode
   - volume value

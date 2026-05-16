@@ -278,6 +278,13 @@ var feedback_flash_decay := 0.0
 var ui_scale := 1.0
 var high_contrast_mode := false
 var master_volume := 0.85
+var music_volume := 0.85
+var sfx_volume := 0.90
+var performance_mode := "balanced"
+var max_active_enemies := MAX_ACTIVE_ENEMIES
+var max_active_projectiles := MAX_ACTIVE_PROJECTILES
+var max_active_vfx_particles := MAX_ACTIVE_VFX_PARTICLES
+var ambient_overlay_base_alpha := 0.08
 var concept_bg_texture: Texture2D
 var player_sprite_texture: Texture2D
 var enemy_drone_texture: Texture2D
@@ -413,23 +420,32 @@ func _load_audio_stream_if_exists(path: String) -> AudioStream:
 func _setup_audio_players() -> void:
 	music_player = AudioStreamPlayer.new()
 	music_player.bus = "Master"
-	music_player.volume_db = -10.0
 	add_child(music_player)
 
 	sfx_player = AudioStreamPlayer.new()
 	sfx_player.bus = "Master"
-	sfx_player.volume_db = -7.0
 	add_child(sfx_player)
 
-	_apply_master_volume()
+	_apply_audio_mix()
 	_update_biome_music(true)
+
+
+func _apply_audio_mix() -> void:
+	_apply_master_volume()
+	if music_player != null:
+		music_player.volume_db = -80.0 if music_volume <= 0.0001 else linear_to_db(clamp(music_volume, 0.0001, 1.0))
+	if sfx_player != null:
+		sfx_player.volume_db = -80.0 if sfx_volume <= 0.0001 else linear_to_db(clamp(sfx_volume, 0.0001, 1.0))
 
 
 func _apply_master_volume() -> void:
 	var bus_index := AudioServer.get_bus_index("Master")
 	if bus_index < 0:
 		return
-	AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(master_volume, 0.0001, 1.0)))
+	if master_volume <= 0.0001:
+		AudioServer.set_bus_volume_db(bus_index, -80.0)
+	else:
+		AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(master_volume, 0.0001, 1.0)))
 
 
 func _play_sfx(name: String) -> void:
@@ -543,7 +559,7 @@ func _draw() -> void:
 		biome_texture = biome_bg_textures[current_biome_index]
 	if biome_texture != null:
 		draw_texture_rect(biome_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.90))
-		if concept_bg_texture != null:
+		if concept_bg_texture != null and performance_mode != "performance":
 			draw_texture_rect(concept_bg_texture, Rect2(Vector2.ZERO, screen_size), false, Color(1, 1, 1, 0.14))
 		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.44))
 	elif concept_bg_texture != null:
@@ -551,21 +567,26 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.60))
 	else:
 		draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
-	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.04, 0.18, 0.32, 0.06 + 0.04 * pulse))
+	var ambient_alpha := ambient_overlay_base_alpha
+	if performance_mode != "performance":
+		ambient_alpha += 0.04 * pulse
+	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.04, 0.18, 0.32, ambient_alpha))
 
 	# Fixed thumb guides make touch zones obvious on tablets.
 	var left_hint_center := Vector2(screen_size.x * 0.16, screen_size.y * 0.82)
 	var right_hint_center := Vector2(screen_size.x * 0.84, screen_size.y * 0.82)
-	draw_circle(left_hint_center, 66, Color(0.27, 0.9, 1.0, 0.12))
-	draw_circle(left_hint_center, 26, Color(0.27, 0.9, 1.0, 0.18))
-	draw_circle(right_hint_center, 74, Color(0.80, 0.55, 1.0, 0.12))
-	draw_circle(right_hint_center, 26, Color(0.80, 0.55, 1.0, 0.18))
+	if performance_mode != "performance":
+		draw_circle(left_hint_center, 66, Color(0.27, 0.9, 1.0, 0.12))
+		draw_circle(left_hint_center, 26, Color(0.27, 0.9, 1.0, 0.18))
+		draw_circle(right_hint_center, 74, Color(0.80, 0.55, 1.0, 0.12))
+		draw_circle(right_hint_center, 26, Color(0.80, 0.55, 1.0, 0.18))
 
 	var dead_zone_alpha := 0.08 if not high_contrast_mode else 0.20
 	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(0.30, 0.76, 1.0, dead_zone_alpha))
 	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(0.85, 0.50, 1.0, dead_zone_alpha))
-	draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.06), true)
-	draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.06), true)
+	if performance_mode != "performance":
+		draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.06), true)
+		draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.06), true)
 	draw_rect(Rect2(0, 70, screen_size.x, 8), Color(0.26, 0.85, 1.0, 0.28))
 
 	var player_color := Color("#76efff")
@@ -730,11 +751,18 @@ func _apply_profile_bonuses() -> void:
 	ui_scale = float(settings.get("ui_scale", 1.0))
 	high_contrast_mode = bool(settings.get("high_contrast", false))
 	master_volume = float(settings.get("master_volume", 0.85))
+	music_volume = float(settings.get("music_volume", 0.85))
+	sfx_volume = float(settings.get("sfx_volume", 0.90))
+	performance_mode = String(settings.get("performance_mode", "balanced"))
 	enemy_health_multiplier = 1.0
 	enemy_damage_multiplier = 1.0
 	enemy_spawn_multiplier = 1.0
 	enemy_speed_multiplier = 1.0
 	loot_gain_multiplier = 1.0
+	max_active_enemies = MAX_ACTIVE_ENEMIES
+	max_active_projectiles = MAX_ACTIVE_PROJECTILES
+	max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
+	ambient_overlay_base_alpha = 0.08
 	if difficulty == "easy":
 		player_lives = 4
 		max_lives = 4
@@ -751,6 +779,23 @@ func _apply_profile_bonuses() -> void:
 		enemy_spawn_multiplier = 1.16
 		enemy_speed_multiplier = 1.08
 		loot_gain_multiplier = 0.90
+
+	match performance_mode:
+		"quality":
+			max_active_enemies = 64
+			max_active_projectiles = 48
+			max_active_vfx_particles = 260
+			ambient_overlay_base_alpha = 0.10
+		"performance":
+			max_active_enemies = 44
+			max_active_projectiles = 24
+			max_active_vfx_particles = 110
+			ambient_overlay_base_alpha = 0.05
+		_:
+			max_active_enemies = MAX_ACTIVE_ENEMIES
+			max_active_projectiles = MAX_ACTIVE_PROJECTILES
+			max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
+			ambient_overlay_base_alpha = 0.08
 
 
 func _setup_feedback_bus() -> void:
@@ -1507,9 +1552,9 @@ func _update_dash_and_combo(delta: float) -> void:
 
 
 func _spawn_vfx_burst(position: Vector2, color: Color, count: int, speed: float, ttl: float, size: float) -> void:
-	if vfx_particles.size() >= MAX_ACTIVE_VFX_PARTICLES:
+	if vfx_particles.size() >= max_active_vfx_particles:
 		return
-	var emit_count := mini(count, MAX_ACTIVE_VFX_PARTICLES - vfx_particles.size())
+	var emit_count := mini(count, max_active_vfx_particles - vfx_particles.size())
 	for i in emit_count:
 		var angle := randf_range(0.0, TAU)
 		var velocity := Vector2.RIGHT.rotated(angle) * randf_range(speed * 0.55, speed * 1.05)
@@ -1794,7 +1839,7 @@ func _start_next_wave() -> void:
 
 
 func _spawn_enemy() -> void:
-	if active_enemies.size() >= MAX_ACTIVE_ENEMIES:
+	if active_enemies.size() >= max_active_enemies:
 		return
 	var angle := randf_range(0.0, TAU)
 	var enemy_position := player_position + Vector2.RIGHT.rotated(angle) * wave_spawn_radius
@@ -1856,7 +1901,7 @@ func _update_enemies(delta: float) -> void:
 
 
 func _spawn_enemy_projectile(origin: Vector2) -> void:
-	if enemy_projectiles.size() >= MAX_ACTIVE_PROJECTILES:
+	if enemy_projectiles.size() >= max_active_projectiles:
 		return
 	var fire_direction := (player_position - origin).normalized()
 	if fire_direction.length() <= 0.01:
@@ -2391,12 +2436,13 @@ func _update_hud() -> void:
 	hunger_bar.max_value = max_hunger
 	health_bar.value = health
 	hunger_bar.value = hunger
-	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s" % [
+	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s | Perf: %s" % [
 		_state_text(player_state),
 		_input_text(input_mode),
 		player_lives,
 		max_lives,
-		difficulty_name.capitalize()
+		difficulty_name.capitalize(),
+		performance_mode.capitalize()
 	]
 	biome_label.text = "Biome: %s" % biome_names[current_biome_index]
 	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]

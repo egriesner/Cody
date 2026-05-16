@@ -66,6 +66,8 @@ Developer/Studio: **Code Max Studios**
 - Combo multiplier system with XP scaling and run rank scoring
 - Spitter ranged projectiles for improved encounter pressure
 - Difficulty modes now scale enemy pressure and loot economy (not just lives)
+- Performance mode presets for low/mid/high tablet classes
+- Separate master/music/SFX audio controls
 - Victory/defeat flow with run summary panel
 - Profile save/continue persistence via `user://rift_profile.json`
 

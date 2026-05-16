@@ -20,11 +20,14 @@ var settings_panel: Panel
 var continue_button: Button
 var daily_reward_button: Button
 var settings_volume_slider: HSlider
+var settings_music_slider: HSlider
+var settings_sfx_slider: HSlider
 var settings_vibration_toggle: CheckButton
 var settings_hit_flash_toggle: CheckButton
 var settings_ui_scale_slider: HSlider
 var settings_high_contrast_toggle: CheckButton
 var difficulty_option: OptionButton
+var performance_option: OptionButton
 var concept_bg_texture: Texture2D
 var panel_top_texture: Texture2D
 var panel_bottom_texture: Texture2D
@@ -68,7 +71,10 @@ func _apply_master_volume_from_profile() -> void:
 	var bus_index := AudioServer.get_bus_index("Master")
 	if bus_index < 0:
 		return
-	AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(volume, 0.0001, 1.0)))
+	if volume <= 0.0001:
+		AudioServer.set_bus_volume_db(bus_index, -80.0)
+	else:
+		AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(volume, 0.0001, 1.0)))
 
 
 func _build_menu_ui() -> void:
@@ -164,8 +170,8 @@ func _build_menu_ui() -> void:
 
 func _build_settings_panel() -> void:
 	settings_panel = Panel.new()
-	settings_panel.size = Vector2(620, 430)
-	settings_panel.position = Vector2(650, 280)
+	settings_panel.size = Vector2(720, 560)
+	settings_panel.position = Vector2(600, 220)
 	settings_panel.visible = false
 	add_child(settings_panel)
 
@@ -188,23 +194,49 @@ func _build_settings_panel() -> void:
 	settings_volume_slider.step = 0.01
 	settings_panel.add_child(settings_volume_slider)
 
+	var music_label := Label.new()
+	music_label.text = "Music Volume"
+	music_label.position = Vector2(60, 142)
+	settings_panel.add_child(music_label)
+
+	settings_music_slider = HSlider.new()
+	settings_music_slider.position = Vector2(230, 140)
+	settings_music_slider.size = Vector2(320, 30)
+	settings_music_slider.min_value = 0.0
+	settings_music_slider.max_value = 1.0
+	settings_music_slider.step = 0.01
+	settings_panel.add_child(settings_music_slider)
+
+	var sfx_label := Label.new()
+	sfx_label.text = "SFX Volume"
+	sfx_label.position = Vector2(60, 180)
+	settings_panel.add_child(sfx_label)
+
+	settings_sfx_slider = HSlider.new()
+	settings_sfx_slider.position = Vector2(230, 178)
+	settings_sfx_slider.size = Vector2(320, 30)
+	settings_sfx_slider.min_value = 0.0
+	settings_sfx_slider.max_value = 1.0
+	settings_sfx_slider.step = 0.01
+	settings_panel.add_child(settings_sfx_slider)
+
 	settings_vibration_toggle = CheckButton.new()
 	settings_vibration_toggle.text = "Enable Vibration"
-	settings_vibration_toggle.position = Vector2(60, 158)
+	settings_vibration_toggle.position = Vector2(60, 224)
 	settings_panel.add_child(settings_vibration_toggle)
 
 	settings_hit_flash_toggle = CheckButton.new()
 	settings_hit_flash_toggle.text = "Enable Hit Flash"
-	settings_hit_flash_toggle.position = Vector2(300, 158)
+	settings_hit_flash_toggle.position = Vector2(300, 224)
 	settings_panel.add_child(settings_hit_flash_toggle)
 
 	var ui_scale_label := Label.new()
 	ui_scale_label.text = "UI Scale"
-	ui_scale_label.position = Vector2(60, 194)
+	ui_scale_label.position = Vector2(60, 260)
 	settings_panel.add_child(ui_scale_label)
 
 	settings_ui_scale_slider = HSlider.new()
-	settings_ui_scale_slider.position = Vector2(230, 190)
+	settings_ui_scale_slider.position = Vector2(230, 256)
 	settings_ui_scale_slider.size = Vector2(320, 30)
 	settings_ui_scale_slider.min_value = 0.8
 	settings_ui_scale_slider.max_value = 1.3
@@ -213,40 +245,53 @@ func _build_settings_panel() -> void:
 
 	settings_high_contrast_toggle = CheckButton.new()
 	settings_high_contrast_toggle.text = "High Contrast UI"
-	settings_high_contrast_toggle.position = Vector2(60, 228)
+	settings_high_contrast_toggle.position = Vector2(60, 298)
 	settings_panel.add_child(settings_high_contrast_toggle)
 
 	var difficulty_label := Label.new()
 	difficulty_label.text = "Difficulty"
-	difficulty_label.position = Vector2(300, 228)
+	difficulty_label.position = Vector2(300, 298)
 	settings_panel.add_child(difficulty_label)
 
 	difficulty_option = OptionButton.new()
-	difficulty_option.position = Vector2(410, 222)
+	difficulty_option.position = Vector2(410, 292)
 	difficulty_option.size = Vector2(140, 36)
 	difficulty_option.add_item("Easy", 0)
 	difficulty_option.add_item("Normal", 1)
 	difficulty_option.add_item("Hard", 2)
 	settings_panel.add_child(difficulty_option)
 
+	var perf_label := Label.new()
+	perf_label.text = "Performance Mode"
+	perf_label.position = Vector2(60, 342)
+	settings_panel.add_child(perf_label)
+
+	performance_option = OptionButton.new()
+	performance_option.position = Vector2(230, 336)
+	performance_option.size = Vector2(220, 36)
+	performance_option.add_item("Quality", 0)
+	performance_option.add_item("Balanced", 1)
+	performance_option.add_item("Performance", 2)
+	settings_panel.add_child(performance_option)
+
 	var save_button := Button.new()
 	save_button.text = "Save Settings"
-	save_button.position = Vector2(96, 304)
+	save_button.position = Vector2(112, 420)
 	save_button.size = Vector2(200, 54)
 	save_button.pressed.connect(_on_save_settings_pressed)
 	settings_panel.add_child(save_button)
 
 	var close_button := Button.new()
 	close_button.text = "Close"
-	close_button.position = Vector2(328, 304)
+	close_button.position = Vector2(380, 420)
 	close_button.size = Vector2(200, 54)
 	close_button.pressed.connect(_on_close_settings_pressed)
 	settings_panel.add_child(close_button)
 
 	var replay_tutorial_button := Button.new()
 	replay_tutorial_button.text = "Replay Tutorial Next Run"
-	replay_tutorial_button.position = Vector2(172, 366)
-	replay_tutorial_button.size = Vector2(276, 40)
+	replay_tutorial_button.position = Vector2(222, 490)
+	replay_tutorial_button.size = Vector2(276, 44)
 	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
 	settings_panel.add_child(replay_tutorial_button)
 
@@ -329,6 +374,8 @@ func _apply_menu_skin() -> void:
 func _refresh_menu() -> void:
 	var settings: Dictionary = profile.get("settings", {})
 	settings_volume_slider.value = float(settings.get("master_volume", 0.85))
+	settings_music_slider.value = float(settings.get("music_volume", 0.85))
+	settings_sfx_slider.value = float(settings.get("sfx_volume", 0.90))
 	settings_vibration_toggle.button_pressed = bool(settings.get("vibration", true))
 	settings_hit_flash_toggle.button_pressed = bool(settings.get("show_hit_flash", true))
 	settings_ui_scale_slider.value = float(settings.get("ui_scale", 1.0))
@@ -341,6 +388,14 @@ func _refresh_menu() -> void:
 			difficulty_option.select(2)
 		_:
 			difficulty_option.select(1)
+	var performance_mode := String(settings.get("performance_mode", "balanced"))
+	match performance_mode:
+		"quality":
+			performance_option.select(0)
+		"performance":
+			performance_option.select(2)
+		_:
+			performance_option.select(1)
 
 	continue_button.disabled = not bool(profile.get("has_continue_snapshot", false))
 	var reward_claimed_today := String(profile.get("last_daily_reward_date", "")) == SAVE_MANAGER_SCRIPT.today_stamp()
@@ -419,6 +474,8 @@ func _on_settings_pressed() -> void:
 func _on_save_settings_pressed() -> void:
 	var settings: Dictionary = profile.get("settings", {})
 	settings["master_volume"] = settings_volume_slider.value
+	settings["music_volume"] = settings_music_slider.value
+	settings["sfx_volume"] = settings_sfx_slider.value
 	settings["vibration"] = settings_vibration_toggle.button_pressed
 	settings["show_hit_flash"] = settings_hit_flash_toggle.button_pressed
 	settings["ui_scale"] = settings_ui_scale_slider.value
@@ -430,6 +487,13 @@ func _on_save_settings_pressed() -> void:
 			settings["difficulty"] = "hard"
 		_:
 			settings["difficulty"] = "normal"
+	match performance_option.selected:
+		0:
+			settings["performance_mode"] = "quality"
+		2:
+			settings["performance_mode"] = "performance"
+		_:
+			settings["performance_mode"] = "balanced"
 	profile["settings"] = settings
 	_save_profile()
 	_apply_master_volume_from_profile()
