@@ -298,11 +298,19 @@ var companion_portrait: TextureRect
 
 var pause_panel: Panel
 var pause_title: Label
+var pause_resume_button: Button
+var pause_save_menu_button: Button
+var pause_end_run_button: Button
 var end_panel: Panel
 var end_title: Label
 var end_subtitle: Label
+var end_retry_button: Button
+var end_menu_button: Button
 var tutorial_panel: Panel
+var tutorial_title_label: Label
 var tutorial_body: Label
+var tutorial_next_button: Button
+var tutorial_skip_button: Button
 var tutorial_index := 0
 var tutorial_completed_this_session := false
 var tutorial_enabled := true
@@ -369,6 +377,7 @@ var screen_shake_intensity := 0.0
 var screen_shake_offset := Vector2.ZERO
 var top_hud_panel: Panel
 var bottom_hud_panel: Panel
+var hud_title_label: Label
 var telemetry_heartbeat_tick := 0.0
 var mutator_intensity_multiplier := 1.0
 var elite_spawn_chance_multiplier := 1.0
@@ -395,6 +404,7 @@ var power_cubes_collected := 0
 var power_cube_damage_bonus := 0.08
 var power_cube_health_bonus := 18.0
 var life_reset_pending := false
+var compact_ui_mode := false
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -2049,22 +2059,22 @@ func _build_hud() -> void:
 
 	top_hud_panel = Panel.new()
 	top_hud_panel.position = Vector2(0, 0)
-	top_hud_panel.size = Vector2(1920, 440)
+	top_hud_panel.size = Vector2(viewport_size.x, max(160.0, viewport_size.y * 0.22))
 	top_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_root.add_child(top_hud_panel)
 
 	bottom_hud_panel = Panel.new()
-	bottom_hud_panel.position = Vector2(0, 882)
-	bottom_hud_panel.size = Vector2(1920, 198)
+	bottom_hud_panel.position = Vector2(0, viewport_size.y - max(120.0, viewport_size.y * 0.16))
+	bottom_hud_panel.size = Vector2(viewport_size.x, max(120.0, viewport_size.y * 0.16))
 	bottom_hud_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hud_root.add_child(bottom_hud_panel)
 
-	var title := Label.new()
-	title.text = "RIFT: The Bestiary Protocol - Code Maxx Studios"
-	title.position = Vector2(20, 12)
-	title.add_theme_font_size_override("font_size", 24)
-	title.add_theme_color_override("font_color", Color(0.80, 0.98, 1.0))
-	hud_root.add_child(title)
+	hud_title_label = Label.new()
+	hud_title_label.text = "RIFT: The Bestiary Protocol - Code Maxx Studios"
+	hud_title_label.position = Vector2(20, 12)
+	hud_title_label.add_theme_font_size_override("font_size", 24)
+	hud_title_label.add_theme_color_override("font_color", Color(0.80, 0.98, 1.0))
+	hud_root.add_child(hud_title_label)
 
 	state_label = Label.new()
 	state_label.position = Vector2(20, 48)
@@ -2335,6 +2345,7 @@ func _build_hud() -> void:
 	_build_tutorial_panel()
 	_apply_ui_skin()
 	_on_hotbar_selected(selected_hotbar_index)
+	_apply_responsive_hud_layout()
 
 
 func _build_pause_panel() -> void:
@@ -2350,26 +2361,26 @@ func _build_pause_panel() -> void:
 	pause_title.add_theme_font_size_override("font_size", 34)
 	pause_panel.add_child(pause_title)
 
-	var resume_button := Button.new()
-	resume_button.text = "Resume"
-	resume_button.position = Vector2(140, 96)
-	resume_button.size = Vector2(280, 50)
-	resume_button.pressed.connect(_on_resume_pressed)
-	pause_panel.add_child(resume_button)
+	pause_resume_button = Button.new()
+	pause_resume_button.text = "Resume"
+	pause_resume_button.position = Vector2(140, 96)
+	pause_resume_button.size = Vector2(280, 50)
+	pause_resume_button.pressed.connect(_on_resume_pressed)
+	pause_panel.add_child(pause_resume_button)
 
-	var save_menu_button := Button.new()
-	save_menu_button.text = "Save & Return to Menu"
-	save_menu_button.position = Vector2(140, 162)
-	save_menu_button.size = Vector2(280, 50)
-	save_menu_button.pressed.connect(_on_save_and_menu_pressed)
-	pause_panel.add_child(save_menu_button)
+	pause_save_menu_button = Button.new()
+	pause_save_menu_button.text = "Save & Return to Menu"
+	pause_save_menu_button.position = Vector2(140, 162)
+	pause_save_menu_button.size = Vector2(280, 50)
+	pause_save_menu_button.pressed.connect(_on_save_and_menu_pressed)
+	pause_panel.add_child(pause_save_menu_button)
 
-	var quit_button := Button.new()
-	quit_button.text = "End Run"
-	quit_button.position = Vector2(140, 228)
-	quit_button.size = Vector2(280, 50)
-	quit_button.pressed.connect(_on_end_run_pressed)
-	pause_panel.add_child(quit_button)
+	pause_end_run_button = Button.new()
+	pause_end_run_button.text = "End Run"
+	pause_end_run_button.position = Vector2(140, 228)
+	pause_end_run_button.size = Vector2(280, 50)
+	pause_end_run_button.pressed.connect(_on_end_run_pressed)
+	pause_panel.add_child(pause_end_run_button)
 
 
 func _build_end_panel() -> void:
@@ -2391,19 +2402,19 @@ func _build_end_panel() -> void:
 	end_subtitle.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	end_panel.add_child(end_subtitle)
 
-	var retry_button := Button.new()
-	retry_button.text = "Start New Run"
-	retry_button.position = Vector2(140, 236)
-	retry_button.size = Vector2(180, 54)
-	retry_button.pressed.connect(_on_retry_pressed)
-	end_panel.add_child(retry_button)
+	end_retry_button = Button.new()
+	end_retry_button.text = "Start New Run"
+	end_retry_button.position = Vector2(140, 236)
+	end_retry_button.size = Vector2(180, 54)
+	end_retry_button.pressed.connect(_on_retry_pressed)
+	end_panel.add_child(end_retry_button)
 
-	var menu_button := Button.new()
-	menu_button.text = "Return to Menu"
-	menu_button.position = Vector2(380, 236)
-	menu_button.size = Vector2(180, 54)
-	menu_button.pressed.connect(_on_return_menu_pressed)
-	end_panel.add_child(menu_button)
+	end_menu_button = Button.new()
+	end_menu_button.text = "Return to Menu"
+	end_menu_button.position = Vector2(380, 236)
+	end_menu_button.size = Vector2(180, 54)
+	end_menu_button.pressed.connect(_on_return_menu_pressed)
+	end_panel.add_child(end_menu_button)
 
 
 func _build_tutorial_panel() -> void:
@@ -2413,11 +2424,11 @@ func _build_tutorial_panel() -> void:
 	tutorial_panel.visible = false
 	hud_root.add_child(tutorial_panel)
 
-	var tutorial_title := Label.new()
-	tutorial_title.text = "MISSION BRIEFING"
-	tutorial_title.position = Vector2(214, 24)
-	tutorial_title.add_theme_font_size_override("font_size", 34)
-	tutorial_panel.add_child(tutorial_title)
+	tutorial_title_label = Label.new()
+	tutorial_title_label.text = "MISSION BRIEFING"
+	tutorial_title_label.position = Vector2(214, 24)
+	tutorial_title_label.add_theme_font_size_override("font_size", 34)
+	tutorial_panel.add_child(tutorial_title_label)
 
 	tutorial_body = Label.new()
 	tutorial_body.position = Vector2(44, 92)
@@ -2425,20 +2436,20 @@ func _build_tutorial_panel() -> void:
 	tutorial_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tutorial_panel.add_child(tutorial_body)
 
-	var next_button := Button.new()
-	next_button.text = "Next"
-	next_button.position = Vector2(152, 258)
-	next_button.size = Vector2(190, 52)
-	next_button.pressed.connect(_on_tutorial_next_pressed)
-	tutorial_panel.add_child(next_button)
+	tutorial_next_button = Button.new()
+	tutorial_next_button.text = "Next"
+	tutorial_next_button.position = Vector2(152, 258)
+	tutorial_next_button.size = Vector2(190, 52)
+	tutorial_next_button.pressed.connect(_on_tutorial_next_pressed)
+	tutorial_panel.add_child(tutorial_next_button)
 
-	var skip_button := Button.new()
-	skip_button.text = "Skip Tutorial"
-	skip_button.position = Vector2(418, 258)
-	skip_button.size = Vector2(190, 52)
-	skip_button.pressed.connect(_on_tutorial_skip_pressed)
-	skip_button.visible = tutorial_allow_skip
-	tutorial_panel.add_child(skip_button)
+	tutorial_skip_button = Button.new()
+	tutorial_skip_button.text = "Skip Tutorial"
+	tutorial_skip_button.position = Vector2(418, 258)
+	tutorial_skip_button.size = Vector2(190, 52)
+	tutorial_skip_button.pressed.connect(_on_tutorial_skip_pressed)
+	tutorial_skip_button.visible = tutorial_allow_skip
+	tutorial_panel.add_child(tutorial_skip_button)
 
 
 func _recalculate_input_regions() -> void:
@@ -2459,13 +2470,131 @@ func _recalculate_input_regions() -> void:
 		dash_button.position = Vector2(viewport_size.x - 550, viewport_size.y - 136)
 	if rift_burst_button:
 		rift_burst_button.position = Vector2(viewport_size.x - 760, viewport_size.y - 136)
-	if pause_panel:
-		pause_panel.position = (viewport_size - pause_panel.size) * 0.5
-	if end_panel:
-		end_panel.position = (viewport_size - end_panel.size) * 0.5
-	if tutorial_panel:
-		tutorial_panel.position = (viewport_size - tutorial_panel.size) * 0.5
+	_apply_responsive_hud_layout()
 	_generate_map_layout(false)
+
+
+func _apply_responsive_hud_layout() -> void:
+	if viewport_size.x <= 0.0 or viewport_size.y <= 0.0:
+		return
+	compact_ui_mode = viewport_size.y < 800.0 or viewport_size.x < 1360.0
+	var top_height: float = clamp(viewport_size.y * (0.20 if compact_ui_mode else 0.25), 128.0, 270.0)
+	var bottom_height: float = clamp(viewport_size.y * (0.15 if compact_ui_mode else 0.18), 94.0, 196.0)
+	if top_hud_panel != null:
+		top_hud_panel.position = Vector2.ZERO
+		top_hud_panel.size = Vector2(viewport_size.x, top_height)
+	if bottom_hud_panel != null:
+		bottom_hud_panel.position = Vector2(0.0, viewport_size.y - bottom_height)
+		bottom_hud_panel.size = Vector2(viewport_size.x, bottom_height)
+	if hud_title_label != null:
+		hud_title_label.visible = not compact_ui_mode
+	if companion_label != null:
+		companion_label.visible = not compact_ui_mode
+	if loot_label != null:
+		loot_label.visible = not compact_ui_mode
+	if inventory_label != null:
+		inventory_label.visible = not compact_ui_mode
+	if progression_label != null:
+		progression_label.visible = not compact_ui_mode
+	if quest_label != null:
+		quest_label.visible = not compact_ui_mode
+	if status_label != null:
+		status_label.position.y = top_height - (52.0 if compact_ui_mode else 40.0)
+		status_label.size.x = viewport_size.x * (0.86 if compact_ui_mode else 0.66)
+		status_label.add_theme_font_size_override("font_size", 14 if compact_ui_mode else 16)
+	if rhino_timer_label != null:
+		rhino_timer_label.position.y = top_height - (26.0 if compact_ui_mode else 10.0)
+		rhino_timer_label.size.x = viewport_size.x * 0.48
+		rhino_timer_label.add_theme_font_size_override("font_size", 14 if compact_ui_mode else 16)
+	if mutator_label != null:
+		mutator_label.position = Vector2(20, top_height - 24)
+		mutator_label.size.x = viewport_size.x * (0.50 if compact_ui_mode else 0.56)
+		mutator_label.add_theme_font_size_override("font_size", 13 if compact_ui_mode else 16)
+	if rift_label != null:
+		rift_label.position = Vector2(viewport_size.x * (0.50 if compact_ui_mode else 0.58), top_height - 24)
+		rift_label.size.x = viewport_size.x * 0.48
+		rift_label.add_theme_font_size_override("font_size", 13 if compact_ui_mode else 16)
+	if action_button != null:
+		action_button.size = Vector2(232, 96) if compact_ui_mode else Vector2(280, 120)
+		action_button.position = Vector2(viewport_size.x - action_button.size.x - 26, viewport_size.y - action_button.size.y - 26)
+	if dash_button != null:
+		dash_button.size = Vector2(164, 76) if compact_ui_mode else Vector2(180, 84)
+		dash_button.position = Vector2(action_button.position.x - dash_button.size.x - 16, viewport_size.y - dash_button.size.y - 30)
+	if rift_burst_button != null:
+		rift_burst_button.size = Vector2(172, 76) if compact_ui_mode else Vector2(190, 84)
+		rift_burst_button.position = Vector2(dash_button.position.x - rift_burst_button.size.x - 16, viewport_size.y - rift_burst_button.size.y - 30)
+	if pause_panel != null:
+		var pause_size := Vector2(
+			clamp(viewport_size.x * (0.86 if compact_ui_mode else 0.62), 420.0, 700.0),
+			clamp(viewport_size.y * (0.56 if compact_ui_mode else 0.46), 250.0, 380.0)
+		)
+		pause_panel.size = pause_size
+		pause_panel.position = (viewport_size - pause_size) * 0.5
+		if pause_title != null:
+			pause_title.position = Vector2((pause_size.x - 180.0) * 0.5, 22)
+			pause_title.add_theme_font_size_override("font_size", 28 if compact_ui_mode else 34)
+		if pause_resume_button != null and pause_save_menu_button != null and pause_end_run_button != null:
+			var button_width: float = clamp(pause_size.x * 0.74, 250.0, 360.0)
+			var button_height: float = 46.0 if compact_ui_mode else 50.0
+			var start_x: float = (pause_size.x - button_width) * 0.5
+			var start_y: float = pause_size.y * 0.34
+			pause_resume_button.position = Vector2(start_x, start_y)
+			pause_resume_button.size = Vector2(button_width, button_height)
+			pause_save_menu_button.position = Vector2(start_x, start_y + button_height + 12.0)
+			pause_save_menu_button.size = Vector2(button_width, button_height)
+			pause_end_run_button.position = Vector2(start_x, start_y + (button_height + 12.0) * 2.0)
+			pause_end_run_button.size = Vector2(button_width, button_height)
+	if end_panel != null:
+		var end_size := Vector2(
+			clamp(viewport_size.x * (0.90 if compact_ui_mode else 0.70), 440.0, 760.0),
+			clamp(viewport_size.y * (0.60 if compact_ui_mode else 0.50), 260.0, 390.0)
+		)
+		end_panel.size = end_size
+		end_panel.position = (viewport_size - end_size) * 0.5
+		if end_title != null:
+			end_title.position = Vector2((end_size.x - 240.0) * 0.5, 20)
+			end_title.add_theme_font_size_override("font_size", 30 if compact_ui_mode else 36)
+		if end_subtitle != null:
+			end_subtitle.position = Vector2(22, 74)
+			end_subtitle.size = Vector2(end_size.x - 44, end_size.y * 0.42)
+			end_subtitle.add_theme_font_size_override("font_size", 14 if compact_ui_mode else 16)
+		if end_retry_button != null and end_menu_button != null:
+			var end_button_width: float = clamp(end_size.x * (0.62 if compact_ui_mode else 0.30), 180.0, 260.0)
+			var end_button_height: float = 46.0 if compact_ui_mode else 54.0
+			if compact_ui_mode:
+				var btn_x: float = (end_size.x - end_button_width) * 0.5
+				var btn_y: float = end_size.y - (end_button_height * 2.0 + 26.0)
+				end_retry_button.position = Vector2(btn_x, btn_y)
+				end_retry_button.size = Vector2(end_button_width, end_button_height)
+				end_menu_button.position = Vector2(btn_x, btn_y + end_button_height + 10.0)
+				end_menu_button.size = Vector2(end_button_width, end_button_height)
+			else:
+				end_retry_button.position = Vector2(140, end_size.y - 124)
+				end_retry_button.size = Vector2(end_button_width, end_button_height)
+				end_menu_button.position = Vector2(end_size.x - 140 - end_button_width, end_size.y - 124)
+				end_menu_button.size = Vector2(end_button_width, end_button_height)
+	if tutorial_panel != null:
+		var tutorial_size := Vector2(
+			clamp(viewport_size.x * (0.90 if compact_ui_mode else 0.74), 440.0, 820.0),
+			clamp(viewport_size.y * (0.60 if compact_ui_mode else 0.48), 250.0, 390.0)
+		)
+		tutorial_panel.size = tutorial_size
+		tutorial_panel.position = (viewport_size - tutorial_size) * 0.5
+		if tutorial_title_label != null:
+			tutorial_title_label.position = Vector2((tutorial_size.x - 300.0) * 0.5, 18)
+			tutorial_title_label.add_theme_font_size_override("font_size", 28 if compact_ui_mode else 34)
+		if tutorial_body != null:
+			tutorial_body.position = Vector2(24, 72)
+			tutorial_body.size = Vector2(tutorial_size.x - 48, tutorial_size.y * 0.45)
+			tutorial_body.add_theme_font_size_override("font_size", 14 if compact_ui_mode else 16)
+		if tutorial_next_button != null and tutorial_skip_button != null:
+			var tut_button_width: float = clamp(tutorial_size.x * (0.40 if compact_ui_mode else 0.30), 160.0, 240.0)
+			var tut_button_height: float = 44.0 if compact_ui_mode else 52.0
+			var y_row: float = tutorial_size.y - tut_button_height - 18.0
+			tutorial_next_button.position = Vector2(tutorial_size.x * 0.5 - tut_button_width - 10.0, y_row)
+			tutorial_next_button.size = Vector2(tut_button_width, tut_button_height)
+			tutorial_skip_button.position = Vector2(tutorial_size.x * 0.5 + 10.0, y_row)
+			tutorial_skip_button.size = Vector2(tut_button_width, tut_button_height)
 
 
 func _rect_from_norm(source: Dictionary, fallback: Rect2) -> Rect2:
@@ -3823,18 +3952,27 @@ func _update_hud() -> void:
 	health_bar.value = health
 	hunger_bar.value = hunger
 	var regen_remaining: float = max(0.0, out_of_combat_heal_delay - damage_free_time)
-	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s | Perf: %s | Regen:%s%s" % [
-		_state_text(player_state),
-		_input_text(input_mode),
-		player_lives,
-		max_lives,
-		difficulty_name.capitalize(),
-		performance_mode.capitalize(),
-		"%.1fs" % regen_remaining if regen_remaining > 0.0 else "ON",
-		" | HIDDEN" if player_hidden_in_bush else ""
-	]
+	if compact_ui_mode:
+		state_label.text = "State:%s | Lives:%d/%d | Regen:%s%s" % [
+			_state_text(player_state),
+			player_lives,
+			max_lives,
+			"%.1fs" % regen_remaining if regen_remaining > 0.0 else "ON",
+			" | HIDDEN" if player_hidden_in_bush else ""
+		]
+	else:
+		state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s | Perf: %s | Regen:%s%s" % [
+			_state_text(player_state),
+			_input_text(input_mode),
+			player_lives,
+			max_lives,
+			difficulty_name.capitalize(),
+			performance_mode.capitalize(),
+			"%.1fs" % regen_remaining if regen_remaining > 0.0 else "ON",
+			" | HIDDEN" if player_hidden_in_bush else ""
+		]
 	biome_label.text = "Biome: %s | Terrain:%d" % [biome_names[current_biome_index], map_obstacles.size()]
-	wave_label.text = "Wave: %d (%s) | Cubes:%d | Ammo:%d/%d" % [
+	wave_label.text = "Wave:%d %s | Cubes:%d | Ammo:%d/%d" % [
 		wave_number,
 		"active" if wave_active else "prep",
 		power_cubes_collected,
@@ -3885,7 +4023,7 @@ func _update_hud() -> void:
 		int(recipe.get("unlock_level", 1))
 	]
 	quest_label.text = "Objectives: %s" % _objective_summary()
-	mutator_label.text = "Wave Mutator: %s - %s" % [active_mutator_name, active_mutator_desc]
+	mutator_label.text = "Mutator: %s" % active_mutator_name if compact_ui_mode else "Wave Mutator: %s - %s" % [active_mutator_name, active_mutator_desc]
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
 	if input_mode == InputMode.ATTACK_MODE:
