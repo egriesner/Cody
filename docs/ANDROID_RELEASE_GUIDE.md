@@ -149,7 +149,7 @@ Use these project templates to speed submission preparation:
 - `docs/PRIVACY_POLICY_TEMPLATE.md`
 - `docs/RELEASE_CANDIDATE_CHECKLIST.md`
 - `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
-- `docs/RELEASE_NOTES_0_2_0.md`
+- `docs/RELEASE_NOTES_1_0_0.md`
 - `docs/PLAY_UPLOAD_HANDOFF.md`
 
 ## 12) One-Command Preflight Check

@@ -12,7 +12,7 @@ required_files=(
   "docs/ANDROID_RELEASE_GUIDE.md"
   "docs/PLAYTEST_MATRIX.md"
   "docs/INTERNAL_TEST_REPORT_TEMPLATE.md"
-  "docs/RELEASE_NOTES_0_2_0.md"
+  "docs/RELEASE_NOTES_1_0_0.md"
   "docs/PLAY_UPLOAD_HANDOFF.md"
   "docs/PLAY_STORE_LISTING_TEMPLATE.md"
   "docs/PRIVACY_POLICY_TEMPLATE.md"

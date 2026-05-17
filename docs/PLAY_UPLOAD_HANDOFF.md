@@ -1,6 +1,6 @@
-# Play Upload Handoff (0.2.0)
+# Play Upload Handoff (1.0.0)
 
-This handoff is the final step list for publishing `RIFT: The Bestiary Protocol` to Google Play.
+This handoff is the final step list for publishing `RIFT: The Bestiary Protocol` 1.0.0 to Google Play.
 
 ## 1) Local preflight
 
@@ -28,6 +28,7 @@ Artifacts:
 
 - Fill `docs/RELEASE_CANDIDATE_CHECKLIST.md`
 - Fill `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
+- Attach/sign off `docs/RELEASE_NOTES_1_0_0.md`
 
 ## 4) Play Console prep (manual)
 
