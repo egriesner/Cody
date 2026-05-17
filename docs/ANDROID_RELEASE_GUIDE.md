@@ -148,6 +148,7 @@ Use these project templates to speed submission preparation:
 - `docs/PLAY_STORE_LISTING_TEMPLATE.md`
 - `docs/PRIVACY_POLICY_TEMPLATE.md`
 - `docs/RELEASE_CANDIDATE_CHECKLIST.md`
+- `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
 
 ## 12) One-Command Preflight Check
 

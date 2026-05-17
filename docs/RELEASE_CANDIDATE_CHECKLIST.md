@@ -15,6 +15,7 @@ Use this checklist immediately before promoting a build to Google Play productio
 - [ ] 10-11 inch tablet: HUD spacing and touch targets still comfortable.
 - [ ] Lower-end tablet: stable gameplay in `performance_mode=performance`.
 - [ ] Mid/high tablet: visual quality validated in `quality` mode.
+- [ ] Internal test report completed using `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`.
 
 ## Core Gameplay Validation
 

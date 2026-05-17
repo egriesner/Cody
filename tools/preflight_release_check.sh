@@ -11,9 +11,11 @@ echo "[preflight] checking required release docs/files..."
 required_files=(
   "docs/ANDROID_RELEASE_GUIDE.md"
   "docs/PLAYTEST_MATRIX.md"
+  "docs/INTERNAL_TEST_REPORT_TEMPLATE.md"
   "docs/PLAY_STORE_LISTING_TEMPLATE.md"
   "docs/PRIVACY_POLICY_TEMPLATE.md"
   "docs/RELEASE_CANDIDATE_CHECKLIST.md"
+  "docs/ART_PACK_MANIFEST.md"
   "export_presets.cfg"
   ".github/workflows/android-apk.yml"
   ".github/workflows/android-aab.yml"
@@ -37,9 +39,31 @@ rg -q "GOOGLE_PLAY_PACKAGE_NAME" ".github/workflows/android-play-publish.yml" ||
   exit 1
 }
 
-echo "[preflight] checking art pack manifests..."
+echo "[preflight] checking art pack + audio assets..."
 rg -q "assets/artpack" "docs/ART_PACK_MANIFEST.md" || {
   echo "[preflight] art pack manifest appears incomplete" >&2
+  exit 1
+}
+for f in \
+  "assets/audio/sfx/attack.wav" \
+  "assets/audio/sfx/hit.wav" \
+  "assets/audio/sfx/dash.wav" \
+  "assets/audio/music/biome_scrap_dunes.wav" \
+  "assets/audio/music/biome_whispering_archives.wav" \
+  "assets/audio/music/biome_plasma_crater.wav"; do
+  [[ -f "$f" ]] || {
+    echo "[preflight] missing expected audio asset: $f" >&2
+    exit 1
+  }
+done
+
+echo "[preflight] checking workflow guardrails..."
+rg -q "tools/preflight_release_check\\.sh" ".github/workflows/android-aab.yml" || {
+  echo "[preflight] android-aab workflow missing preflight invocation" >&2
+  exit 1
+}
+rg -q "tools/preflight_release_check\\.sh" ".github/workflows/android-play-publish.yml" || {
+  echo "[preflight] android-play-publish workflow missing preflight invocation" >&2
   exit 1
 }
 

@@ -36,6 +36,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Run repository release preflight checks
+        run: |
+          ./tools/preflight_release_check.sh
+
       - name: Validate required configuration
         run: |
           if [ -z "${{ vars.GOOGLE_PLAY_PACKAGE_NAME }}" ]; then
