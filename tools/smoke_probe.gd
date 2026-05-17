@@ -4,7 +4,7 @@ var _errors: Array[String] = []
 
 
 func _init() -> void:
-	_check_resource("res://project.godot")
+	_check_file("res://project.godot")
 	_check_resource("res://android_ui_state_config.json")
 	_check_resource("res://scripts/Main.gd")
 	_check_resource("res://scripts/GameRuntime.gd")
@@ -19,6 +19,11 @@ func _init() -> void:
 	for issue in _errors:
 		push_error(issue)
 	quit(1)
+
+
+func _check_file(path: String) -> void:
+	if not FileAccess.file_exists(path):
+		_errors.append("[smoke] Missing file: %s" % path)
 
 
 func _check_resource(path: String) -> void:
