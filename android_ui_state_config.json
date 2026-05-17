@@ -198,6 +198,67 @@
     "spitterProjectileSpeed": 420,
     "spitterProjectileDamage": 8
   },
+  "combat2": {
+    "riftEnergyMax": 100,
+    "riftBurstCooldownSeconds": 9.0,
+    "riftBurstDamage": 66,
+    "riftBurstRadius": 220,
+    "riftEnergyGainOnKill": 8.0,
+    "riftEnergyGainOnHit": 5.0,
+    "elites": {
+      "spawnChanceBase": 0.10,
+      "healthMultiplier": 1.6,
+      "speedMultiplier": 1.2,
+      "damageMultiplier": 1.35,
+      "lootBonus": 2
+    },
+    "waveMutators": [
+      {
+        "name": "Ion Storm",
+        "description": "Hostiles accelerate and fire hotter plasma.",
+        "enemyHealthMultiplier": 1.05,
+        "enemySpeedMultiplier": 1.18,
+        "spawnMultiplier": 1.08,
+        "projectileSpeedMultiplier": 1.18,
+        "projectileDamageMultiplier": 1.12,
+        "lootMultiplier": 0.95,
+        "xpMultiplier": 1.12
+      },
+      {
+        "name": "Rich Cache",
+        "description": "Resource clusters are dense, enemy pressure dips slightly.",
+        "enemyHealthMultiplier": 0.92,
+        "enemySpeedMultiplier": 0.95,
+        "spawnMultiplier": 0.92,
+        "projectileSpeedMultiplier": 0.94,
+        "projectileDamageMultiplier": 0.92,
+        "lootMultiplier": 1.28,
+        "xpMultiplier": 0.98
+      },
+      {
+        "name": "Frenzy Bloom",
+        "description": "More hostiles arrive, but combos level faster.",
+        "enemyHealthMultiplier": 1.0,
+        "enemySpeedMultiplier": 1.1,
+        "spawnMultiplier": 1.22,
+        "projectileSpeedMultiplier": 1.05,
+        "projectileDamageMultiplier": 1.0,
+        "lootMultiplier": 1.05,
+        "xpMultiplier": 1.2
+      },
+      {
+        "name": "Stabilized Rift",
+        "description": "Balanced anomaly state.",
+        "enemyHealthMultiplier": 1.0,
+        "enemySpeedMultiplier": 1.0,
+        "spawnMultiplier": 1.0,
+        "projectileSpeedMultiplier": 1.0,
+        "projectileDamageMultiplier": 1.0,
+        "lootMultiplier": 1.0,
+        "xpMultiplier": 1.0
+      }
+    ]
+  },
   "tutorial": {
     "enabled": true,
     "allowSkip": true,

@@ -48,6 +48,9 @@ Developer/Studio: **Code Maxx Studios**
 ## Current Game Features
 
 - Continuous wave combat with drone variants (drone, brute, spitter)
+- 2.0 Wave Mutator Director with rotating anomaly rules per wave
+- 2.0 Elite enemies with boosted stats, visuals, and reward drops
+- 2.0 Rift Burst ultimate ability (charge meter + AOE detonation)
 - Resource economy (`human_scrap`, `alien_crystals`, foods) and scavenge bursts
 - Crafting loop with weapon recipes and level gates
 - Companion behaviors:
@@ -79,7 +82,7 @@ Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK and AAB build com
 Use `docs/PLAY_STORE_LISTING_TEMPLATE.md` and `docs/PRIVACY_POLICY_TEMPLATE.md` to finalize Play listing metadata and policy text.
 Use `docs/RELEASE_CANDIDATE_CHECKLIST.md` to gate promotion to production.
 Use `docs/INTERNAL_TEST_REPORT_TEMPLATE.md` to log each internal/closed test cycle.
-Use `docs/RELEASE_NOTES_1_0_0.md` and `docs/PLAY_UPLOAD_HANDOFF.md` for release communications and upload flow.
+Use `docs/RELEASE_NOTES_2_0_0.md` and `docs/PLAY_UPLOAD_HANDOFF.md` for release communications and upload flow.
 Run `./tools/preflight_release_check.sh` before cutting any release build.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
 GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.

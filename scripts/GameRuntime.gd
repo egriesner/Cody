@@ -157,6 +157,7 @@ var bestiary_pages := 0
 var bestiary_entries: Dictionary = {}
 var secret_walls_broken := 0
 var drones_defeated := 0
+var elite_enemies_defeated := 0
 var pages_collected_this_run := 0
 
 var wave_number := 0
@@ -198,6 +199,7 @@ var combo_multiplier := 1.0
 var combo_decay_time_left := 0.0
 var max_combo_reached := 1.0
 var dash_uses_this_run := 0
+var rift_bursts_used := 0
 var enemy_projectiles: Array[Dictionary] = []
 var spitter_shot_tick := 0.0
 var dash_cooldown_seconds := 2.4
@@ -214,6 +216,29 @@ var boss_shockwave_telegraph_armed := false
 var critical_hit_chance := 0.14
 var critical_hit_damage_multiplier := 1.55
 var projectile_near_miss_radius := 94.0
+var rift_energy := 0.0
+var rift_energy_max := 100.0
+var rift_burst_cooldown := 0.0
+var rift_burst_cooldown_seconds := 9.0
+var rift_burst_damage := 66.0
+var rift_burst_radius := 220.0
+var rift_energy_gain_on_kill := 8.0
+var rift_energy_gain_on_hit := 5.0
+var active_mutator_name := "Stable Rift"
+var active_mutator_desc := "No anomaly"
+var mutator_enemy_health_multiplier := 1.0
+var mutator_enemy_speed_multiplier := 1.0
+var mutator_spawn_multiplier := 1.0
+var mutator_projectile_speed_multiplier := 1.0
+var mutator_projectile_damage_multiplier := 1.0
+var mutator_loot_multiplier := 1.0
+var mutator_xp_multiplier := 1.0
+var wave_mutator_pool: Array[Dictionary] = []
+var elite_spawn_chance_base := 0.10
+var elite_health_multiplier := 1.6
+var elite_speed_multiplier := 1.2
+var elite_damage_multiplier := 1.35
+var elite_loot_bonus := 2
 var difficulty_name := "normal"
 var enemy_health_multiplier := 1.0
 var enemy_damage_multiplier := 1.0
@@ -239,6 +264,8 @@ var boss_label: Label
 var combo_label: Label
 var dash_label: Label
 var perf_metrics_label: Label
+var mutator_label: Label
+var rift_label: Label
 var companion_label: Label
 var loot_label: Label
 var rhino_timer_label: Label
@@ -247,6 +274,7 @@ var quest_label: Label
 var progression_label: Label
 var action_button: Button
 var dash_button: Button
+var rift_burst_button: Button
 var rhino_button: Button
 var travel_biome_button: Button
 var hotbar_container: HBoxContainer
@@ -725,19 +753,28 @@ func _draw() -> void:
 		var enemy_hp: float = enemy.get("hp", 1.0)
 		var enemy_max_hp: float = enemy.get("max_hp", 1.0)
 		var enemy_type: String = enemy.get("type", "drone")
+		var enemy_is_elite: bool = bool(enemy.get("elite", false))
 		var enemy_color := Color("#bc7bff")
 		if enemy_type == "brute":
 			enemy_color = Color("#ff8f89")
 		elif enemy_type == "spitter":
 			enemy_color = Color("#8fffb4")
+		if enemy_is_elite:
+			enemy_color = Color(1.0, 0.90, 0.50, 1.0)
 		var enemy_texture := _texture_for_enemy_type(enemy_type)
 		if enemy_texture != null:
 			var enemy_size := Vector2(50, 50)
 			if enemy_type == "brute":
 				enemy_size = Vector2(62, 62)
+			if enemy_is_elite:
+				enemy_size *= 1.18
 			draw_texture_rect(enemy_texture, Rect2(enemy_draw_position - enemy_size * 0.5, enemy_size), false, enemy_color)
 		else:
-			draw_circle(enemy_draw_position, 16, enemy_color)
+			var draw_radius := 20.0 if enemy_is_elite else 16.0
+			draw_circle(enemy_draw_position, draw_radius, enemy_color)
+		if enemy_is_elite:
+			draw_arc(enemy_draw_position, 36.0, 0.0, TAU, 28, Color(1.0, 0.92, 0.56, 0.82), 2.6, true)
+			draw_circle(enemy_draw_position + Vector2(0, -30), 4.0, Color(1.0, 0.92, 0.56, 0.85))
 		draw_circle(enemy_draw_position, 28, Color(enemy_color.r, enemy_color.g, enemy_color.b, 0.09))
 		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
 		draw_rect(Rect2(enemy_draw_position.x - 17, enemy_draw_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 1))
@@ -810,11 +847,14 @@ func _draw() -> void:
 
 
 func _load_config() -> void:
+	wave_mutator_pool = _default_wave_mutator_pool()
 	var file := FileAccess.open("res://android_ui_state_config.json", FileAccess.READ)
 	if file == null:
+		_reset_active_mutator()
 		return
 	var parsed = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
+		_reset_active_mutator()
 		return
 	config = parsed
 
@@ -863,6 +903,41 @@ func _load_config() -> void:
 	critical_hit_damage_multiplier = float(combat_polish.get("criticalHitDamageMultiplier", critical_hit_damage_multiplier))
 	projectile_near_miss_radius = float(combat_polish.get("projectileNearMissRadius", projectile_near_miss_radius))
 
+	var combat2: Dictionary = config.get("combat2", {})
+	rift_energy_max = float(combat2.get("riftEnergyMax", rift_energy_max))
+	rift_burst_cooldown_seconds = float(combat2.get("riftBurstCooldownSeconds", rift_burst_cooldown_seconds))
+	rift_burst_damage = float(combat2.get("riftBurstDamage", rift_burst_damage))
+	rift_burst_radius = float(combat2.get("riftBurstRadius", rift_burst_radius))
+	rift_energy_gain_on_kill = float(combat2.get("riftEnergyGainOnKill", rift_energy_gain_on_kill))
+	rift_energy_gain_on_hit = float(combat2.get("riftEnergyGainOnHit", rift_energy_gain_on_hit))
+	var elites_cfg: Dictionary = combat2.get("elites", {})
+	elite_spawn_chance_base = float(elites_cfg.get("spawnChanceBase", elite_spawn_chance_base))
+	elite_health_multiplier = float(elites_cfg.get("healthMultiplier", elite_health_multiplier))
+	elite_speed_multiplier = float(elites_cfg.get("speedMultiplier", elite_speed_multiplier))
+	elite_damage_multiplier = float(elites_cfg.get("damageMultiplier", elite_damage_multiplier))
+	elite_loot_bonus = int(elites_cfg.get("lootBonus", elite_loot_bonus))
+	var mutators_cfg = combat2.get("waveMutators", [])
+	if typeof(mutators_cfg) == TYPE_ARRAY and mutators_cfg.size() > 0:
+		wave_mutator_pool.clear()
+		for raw_mutator in mutators_cfg:
+			if typeof(raw_mutator) != TYPE_DICTIONARY:
+				continue
+			var m: Dictionary = raw_mutator
+			wave_mutator_pool.append({
+				"name": String(m.get("name", "Anomaly")),
+				"description": String(m.get("description", "Unstable field conditions detected.")),
+				"enemyHealthMultiplier": float(m.get("enemyHealthMultiplier", 1.0)),
+				"enemySpeedMultiplier": float(m.get("enemySpeedMultiplier", 1.0)),
+				"spawnMultiplier": float(m.get("spawnMultiplier", 1.0)),
+				"projectileSpeedMultiplier": float(m.get("projectileSpeedMultiplier", 1.0)),
+				"projectileDamageMultiplier": float(m.get("projectileDamageMultiplier", 1.0)),
+				"lootMultiplier": float(m.get("lootMultiplier", 1.0)),
+				"xpMultiplier": float(m.get("xpMultiplier", 1.0))
+			})
+	if wave_mutator_pool.is_empty():
+		wave_mutator_pool = _default_wave_mutator_pool()
+	_reset_active_mutator()
+
 	var tutorial_config: Dictionary = config.get("tutorial", {})
 	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
 	tutorial_allow_skip = bool(tutorial_config.get("allowSkip", tutorial_allow_skip))
@@ -887,6 +962,83 @@ func _load_config() -> void:
 				recipes[i]["scrap"] = int(override_recipe.get("scrap", recipes[i].get("scrap", 0)))
 				recipes[i]["crystal"] = int(override_recipe.get("crystal", recipes[i].get("crystal", 0)))
 				recipes[i]["unlock_level"] = int(override_recipe.get("unlockLevel", recipes[i].get("unlock_level", 1)))
+
+
+func _default_wave_mutator_pool() -> Array[Dictionary]:
+	return [
+		{
+			"name": "Ion Storm",
+			"description": "Hostiles accelerate and fire hotter plasma.",
+			"enemyHealthMultiplier": 1.05,
+			"enemySpeedMultiplier": 1.18,
+			"spawnMultiplier": 1.08,
+			"projectileSpeedMultiplier": 1.18,
+			"projectileDamageMultiplier": 1.12,
+			"lootMultiplier": 0.95,
+			"xpMultiplier": 1.12
+		},
+		{
+			"name": "Rich Cache",
+			"description": "Resource clusters are dense, enemy pressure dips slightly.",
+			"enemyHealthMultiplier": 0.92,
+			"enemySpeedMultiplier": 0.95,
+			"spawnMultiplier": 0.92,
+			"projectileSpeedMultiplier": 0.94,
+			"projectileDamageMultiplier": 0.92,
+			"lootMultiplier": 1.28,
+			"xpMultiplier": 0.98
+		},
+		{
+			"name": "Frenzy Bloom",
+			"description": "More hostiles arrive, but combos level faster.",
+			"enemyHealthMultiplier": 1.00,
+			"enemySpeedMultiplier": 1.10,
+			"spawnMultiplier": 1.22,
+			"projectileSpeedMultiplier": 1.05,
+			"projectileDamageMultiplier": 1.00,
+			"lootMultiplier": 1.05,
+			"xpMultiplier": 1.20
+		},
+		{
+			"name": "Stabilized Rift",
+			"description": "Balanced anomaly state.",
+			"enemyHealthMultiplier": 1.0,
+			"enemySpeedMultiplier": 1.0,
+			"spawnMultiplier": 1.0,
+			"projectileSpeedMultiplier": 1.0,
+			"projectileDamageMultiplier": 1.0,
+			"lootMultiplier": 1.0,
+			"xpMultiplier": 1.0
+		}
+	]
+
+
+func _reset_active_mutator() -> void:
+	active_mutator_name = "Stable Rift"
+	active_mutator_desc = "No anomaly"
+	mutator_enemy_health_multiplier = 1.0
+	mutator_enemy_speed_multiplier = 1.0
+	mutator_spawn_multiplier = 1.0
+	mutator_projectile_speed_multiplier = 1.0
+	mutator_projectile_damage_multiplier = 1.0
+	mutator_loot_multiplier = 1.0
+	mutator_xp_multiplier = 1.0
+
+
+func _roll_wave_mutator() -> void:
+	if wave_mutator_pool.is_empty():
+		_reset_active_mutator()
+		return
+	var choice: Dictionary = wave_mutator_pool[randi() % wave_mutator_pool.size()]
+	active_mutator_name = String(choice.get("name", "Anomaly"))
+	active_mutator_desc = String(choice.get("description", "Rift conditions changed."))
+	mutator_enemy_health_multiplier = float(choice.get("enemyHealthMultiplier", 1.0))
+	mutator_enemy_speed_multiplier = float(choice.get("enemySpeedMultiplier", 1.0))
+	mutator_spawn_multiplier = float(choice.get("spawnMultiplier", 1.0))
+	mutator_projectile_speed_multiplier = float(choice.get("projectileSpeedMultiplier", 1.0))
+	mutator_projectile_damage_multiplier = float(choice.get("projectileDamageMultiplier", 1.0))
+	mutator_loot_multiplier = float(choice.get("lootMultiplier", 1.0))
+	mutator_xp_multiplier = float(choice.get("xpMultiplier", 1.0))
 
 
 func _apply_profile_bonuses() -> void:
@@ -922,6 +1074,7 @@ func _apply_profile_bonuses() -> void:
 	max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
 	max_active_shockwaves = MAX_ACTIVE_SHOCKWAVES
 	max_active_dash_afterimages = MAX_ACTIVE_DASH_AFTERIMAGES
+	max_active_hit_markers = MAX_ACTIVE_HIT_MARKERS
 	ambient_overlay_base_alpha = 0.08
 	if difficulty == "easy":
 		player_lives = 4
@@ -947,6 +1100,7 @@ func _apply_profile_bonuses() -> void:
 			max_active_vfx_particles = 260
 			max_active_shockwaves = 34
 			max_active_dash_afterimages = 58
+			max_active_hit_markers = 28
 			ambient_overlay_base_alpha = 0.10
 		"performance":
 			max_active_enemies = 44
@@ -954,6 +1108,7 @@ func _apply_profile_bonuses() -> void:
 			max_active_vfx_particles = 110
 			max_active_shockwaves = 12
 			max_active_dash_afterimages = 18
+			max_active_hit_markers = 10
 			ambient_overlay_base_alpha = 0.05
 		_:
 			max_active_enemies = MAX_ACTIVE_ENEMIES
@@ -961,6 +1116,7 @@ func _apply_profile_bonuses() -> void:
 			max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
 			max_active_shockwaves = MAX_ACTIVE_SHOCKWAVES
 			max_active_dash_afterimages = MAX_ACTIVE_DASH_AFTERIMAGES
+			max_active_hit_markers = MAX_ACTIVE_HIT_MARKERS
 			ambient_overlay_base_alpha = 0.08
 
 
@@ -1103,6 +1259,7 @@ func _apply_ui_skin() -> void:
 	var controls := [
 		action_button,
 		dash_button,
+		rift_burst_button,
 		rhino_button,
 		travel_biome_button,
 		scavenge_button,
@@ -1335,6 +1492,20 @@ func _build_hud() -> void:
 	quest_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hud_root.add_child(quest_label)
 
+	mutator_label = Label.new()
+	mutator_label.position = Vector2(20, 422)
+	mutator_label.size = Vector2(1100, 20)
+	mutator_label.add_theme_font_size_override("font_size", 16)
+	mutator_label.add_theme_color_override("font_color", Color(0.98, 0.92, 0.64))
+	hud_root.add_child(mutator_label)
+
+	rift_label = Label.new()
+	rift_label.position = Vector2(1140, 422)
+	rift_label.size = Vector2(760, 20)
+	rift_label.add_theme_font_size_override("font_size", 16)
+	rift_label.add_theme_color_override("font_color", Color(0.78, 0.98, 1.0))
+	hud_root.add_child(rift_label)
+
 	travel_biome_button = Button.new()
 	travel_biome_button.text = "Travel Biome"
 	travel_biome_button.position = Vector2(1080, 80)
@@ -1418,6 +1589,13 @@ func _build_hud() -> void:
 	dash_button.text = "DASH"
 	dash_button.pressed.connect(_on_dash_pressed)
 	hud_root.add_child(dash_button)
+
+	rift_burst_button = Button.new()
+	rift_burst_button.position = Vector2(1160, 944)
+	rift_burst_button.size = Vector2(190, 84)
+	rift_burst_button.text = "RIFT BURST"
+	rift_burst_button.pressed.connect(_on_rift_burst_pressed)
+	hud_root.add_child(rift_burst_button)
 
 	left_stick_base = Panel.new()
 	left_stick_base.size = Vector2(140, 140)
@@ -1570,6 +1748,10 @@ func _recalculate_input_regions() -> void:
 		hotbar_title.position = Vector2((viewport_size.x - 100) * 0.5, viewport_size.y - 138)
 	if action_button:
 		action_button.position = Vector2(viewport_size.x - 320, viewport_size.y - 150)
+	if dash_button:
+		dash_button.position = Vector2(viewport_size.x - 550, viewport_size.y - 136)
+	if rift_burst_button:
+		rift_burst_button.position = Vector2(viewport_size.x - 760, viewport_size.y - 136)
 	if pause_panel:
 		pause_panel.position = (viewport_size - pause_panel.size) * 0.5
 	if end_panel:
@@ -1659,6 +1841,7 @@ func _is_over_interactive_ui(position: Vector2) -> bool:
 	var controls: Array[Control] = [
 		action_button,
 		dash_button,
+		rift_burst_button,
 		rhino_button,
 		travel_biome_button,
 		scavenge_button,
@@ -1711,6 +1894,7 @@ func _update_player_state(delta: float) -> void:
 
 func _update_dash_and_combo(delta: float) -> void:
 	dash_cooldown_remaining = max(0.0, dash_cooldown_remaining - delta)
+	rift_burst_cooldown = max(0.0, rift_burst_cooldown - delta)
 	if dash_time_left > 0.0:
 		dash_time_left = max(0.0, dash_time_left - delta)
 
@@ -2122,7 +2306,7 @@ func _update_wave_system(delta: float) -> void:
 	if wave_spawn_remaining == 0 and active_enemies.is_empty():
 		wave_active = false
 		wave_wait_tick = 3.5
-		_grant_xp(35 + wave_number * 5)
+		_grant_xp(_scaled_xp_value(35 + wave_number * 5))
 		_scavenge_resources(
 			_scaled_loot_value(3 + wave_number),
 			_scaled_loot_value(1 + int(wave_number / 2)),
@@ -2135,6 +2319,7 @@ func _update_wave_system(delta: float) -> void:
 func _start_next_wave() -> void:
 	wave_number += 1
 	wave_active = true
+	_roll_wave_mutator()
 	boss_shockwave_telegraph_armed = false
 	enemy_projectiles.clear()
 	vfx_particles.clear()
@@ -2142,9 +2327,9 @@ func _start_next_wave() -> void:
 	dash_afterimages.clear()
 	hit_markers.clear()
 	var base_spawn := wave_base_enemies + wave_number * wave_enemy_growth
-	wave_spawn_remaining = maxi(1, int(round(float(base_spawn) * enemy_spawn_multiplier)))
+	wave_spawn_remaining = maxi(1, int(round(float(base_spawn) * enemy_spawn_multiplier * mutator_spawn_multiplier)))
 	wave_spawn_tick = 0.15
-	status_label.text = "Wave %d started." % wave_number
+	status_label.text = "Wave %d started. Mutator: %s" % [wave_number, active_mutator_name]
 
 
 func _spawn_enemy() -> void:
@@ -2156,8 +2341,8 @@ func _spawn_enemy() -> void:
 	enemy_position.y = clamp(enemy_position.y, 360.0, viewport_size.y - 100.0)
 
 	var enemy_type := "drone"
-	var hp := (45.0 + (wave_number * 4.0)) * enemy_health_multiplier
-	var speed := (72.0 + (wave_number * 2.5)) * enemy_speed_multiplier
+	var hp := (45.0 + (wave_number * 4.0)) * enemy_health_multiplier * mutator_enemy_health_multiplier
+	var speed := (72.0 + (wave_number * 2.5)) * enemy_speed_multiplier * mutator_enemy_speed_multiplier
 	var roll := randf()
 	if roll > 0.85:
 		enemy_type = "brute"
@@ -2167,13 +2352,21 @@ func _spawn_enemy() -> void:
 		enemy_type = "spitter"
 		hp *= 1.2
 		speed *= 1.12
+	var elite := false
+	var elite_chance := clamp(elite_spawn_chance_base + float(wave_number) * 0.008, 0.0, 0.42)
+	if randf() < elite_chance:
+		elite = true
+		hp *= elite_health_multiplier
+		speed *= elite_speed_multiplier
 
 	active_enemies.append({
 		"id": next_enemy_id,
 		"type": enemy_type,
+		"elite": elite,
 		"position": enemy_position,
 		"hp": hp,
 		"max_hp": hp,
+		"base_speed": speed,
 		"speed": speed
 	})
 	var spawn_color := Color(0.72, 0.62, 1.0, 0.74)
@@ -2184,6 +2377,10 @@ func _spawn_enemy() -> void:
 	elif enemy_type == "spitter":
 		spawn_color = Color(0.58, 1.0, 0.74, 0.80)
 		spawn_end_radius = 82.0
+	if elite:
+		spawn_color = Color(1.0, 0.90, 0.48, 0.90)
+		spawn_end_radius += 28.0
+		_spawn_hit_marker(enemy_position + Vector2(-24, -34), "ELITE", Color(1.0, 0.90, 0.50, 1.0), 0.42, 42.0)
 	_spawn_shockwave(enemy_position, spawn_color, 10.0, spawn_end_radius, 0.24, 2.2)
 	next_enemy_id += 1
 
@@ -2195,7 +2392,16 @@ func _update_enemies(delta: float) -> void:
 	for i in active_enemies.size():
 		var enemy: Dictionary = active_enemies[i]
 		var enemy_position: Vector2 = enemy.get("position", Vector2.ZERO)
-		var enemy_speed: float = enemy.get("speed", 60.0)
+		var enemy_speed: float = float(enemy.get("speed", 60.0))
+		var base_speed: float = float(enemy.get("base_speed", enemy_speed))
+		var slow_ttl: float = float(enemy.get("rift_slow_ttl", 0.0))
+		if slow_ttl > 0.0:
+			slow_ttl = max(0.0, slow_ttl - delta)
+			enemy["rift_slow_ttl"] = slow_ttl
+			enemy_speed = base_speed * 0.68 if slow_ttl > 0.0 else base_speed
+		else:
+			enemy_speed = base_speed
+		enemy["speed"] = enemy_speed
 		var enemy_type := String(enemy.get("type", "drone"))
 		var drift := Vector2(randf_range(-0.35, 0.35), randf_range(-0.35, 0.35))
 		var direction := (player_position - enemy_position).normalized()
@@ -2215,7 +2421,7 @@ func _update_enemies(delta: float) -> void:
 
 	if has_spitter_line and spitter_shot_tick <= 0.0:
 		_spawn_enemy_projectile(spitter_position_for_shot)
-		spitter_shot_tick = 1.15
+		spitter_shot_tick = 1.15 / max(0.5, mutator_projectile_speed_multiplier)
 
 
 func _spawn_enemy_projectile(origin: Vector2) -> void:
@@ -2226,7 +2432,7 @@ func _spawn_enemy_projectile(origin: Vector2) -> void:
 		return
 	enemy_projectiles.append({
 		"position": origin,
-		"velocity": fire_direction * spitter_projectile_speed,
+		"velocity": fire_direction * spitter_projectile_speed * mutator_projectile_speed_multiplier,
 		"ttl": 2.5,
 		"near_miss_emitted": false
 	})
@@ -2267,7 +2473,7 @@ func _update_enemy_projectiles(delta: float) -> void:
 			if performance_mode != "performance":
 				_trigger_screen_shake(0.05, 2.6)
 		if distance_to_player <= 34.0:
-			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier, "Spitter acid bolt")
+			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier * mutator_projectile_damage_multiplier, "Spitter acid bolt")
 			to_remove.append(i)
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 
@@ -2296,6 +2502,8 @@ func _update_enemy_contacts(delta: float) -> void:
 		var damage := 6.5
 		if enemy.get("type", "drone") == "brute":
 			damage = 11.0
+		if bool(enemy.get("elite", false)):
+			damage *= elite_damage_multiplier
 		_apply_player_damage(damage * enemy_damage_multiplier, "Vexian " + String(enemy.get("type", "drone")))
 		enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 		break
@@ -2306,8 +2514,10 @@ func _apply_player_damage(amount: float, source: String) -> void:
 		status_label.text = "Dash evaded %s." % source
 		_spawn_vfx_burst(player_position, Color(0.84, 0.96, 1.0, 0.92), 5, 180.0, 0.24, 6.0)
 		_spawn_shockwave(player_position, Color(0.84, 0.96, 1.0, 0.72), 8.0, 82.0, 0.18, 2.2)
+		_gain_rift_energy(1.5)
 		return
 	health = clamp(health - amount, 0.0, max_health)
+	_gain_rift_energy(rift_energy_gain_on_hit)
 	combo_streak = 0
 	combo_multiplier = 1.0
 	combo_decay_time_left = 0.0
@@ -2350,10 +2560,14 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 	combo_multiplier = min(2.4, 1.0 + float(combo_streak - 1) * 0.12)
 	max_combo_reached = float(max(max_combo_reached, combo_multiplier))
 	var enemy_type: String = enemy.get("type", "drone")
+	var enemy_is_elite: bool = bool(enemy.get("elite", false))
+	if enemy_is_elite:
+		elite_enemies_defeated += 1
 	var enemy_pos := enemy.get("position", player_position) as Vector2
 	_spawn_vfx_burst(enemy_pos, Color(0.78, 0.68, 1.0, 0.92), 8, 180.0, 0.30, 6.0)
 	_spawn_shockwave(enemy_pos, Color(0.78, 0.68, 1.0, 0.72), 10.0, 70.0, 0.20, 2.2)
 	_spawn_hit_marker(enemy_pos + Vector2(-24, -32), "DOWN", Color(0.86, 0.94, 1.0, 1.0), 0.44, 48.0)
+	_gain_rift_energy(rift_energy_gain_on_kill * (1.5 if enemy_is_elite else 1.0))
 	if enemy_type == "brute":
 		_trigger_screen_shake(0.10, 5.2)
 	var current := int(bestiary_entries.get(enemy_type, 0))
@@ -2368,6 +2582,10 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 	elif enemy_type == "spitter":
 		scrap_gain = 2
 		crystal_gain = 1
+	if enemy_is_elite:
+		scrap_gain += elite_loot_bonus
+		crystal_gain += maxi(1, int(round(float(elite_loot_bonus) * 0.5)))
+		_spawn_hit_marker(enemy_pos + Vector2(-34, -52), "ELITE BONUS", Color(1.0, 0.9, 0.55, 1.0), 0.50, 54.0)
 
 	if companion_id == "annalize":
 		scrap_gain = int(ceil(scrap_gain * 1.3))
@@ -2378,7 +2596,7 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 	crystal_gain = _scaled_loot_value(crystal_gain)
 	_scavenge_resources(scrap_gain, crystal_gain, 0, 0)
 	var base_xp := 8 + wave_number
-	var xp_gain := int(round(float(base_xp) * combo_multiplier))
+	var xp_gain := _scaled_xp_value(int(round(float(base_xp) * combo_multiplier)))
 	_grant_xp(xp_gain)
 
 
@@ -2392,7 +2610,17 @@ func _update_passive_scavenge(delta: float) -> void:
 
 
 func _scaled_loot_value(amount: int) -> int:
-	return maxi(0, int(round(float(amount) * loot_gain_multiplier)))
+	return maxi(0, int(round(float(amount) * loot_gain_multiplier * mutator_loot_multiplier)))
+
+
+func _scaled_xp_value(amount: int) -> int:
+	return maxi(0, int(round(float(amount) * mutator_xp_multiplier)))
+
+
+func _gain_rift_energy(amount: float) -> void:
+	if amount <= 0.0:
+		return
+	rift_energy = clamp(rift_energy + amount, 0.0, rift_energy_max)
 
 
 func _scavenge_resources(scrap: int, crystals: int, melons: int, berries: int) -> void:
@@ -2550,6 +2778,7 @@ func _update_checkpoint_emitter(delta: float) -> void:
 func _enter_boss_phase() -> void:
 	boss_spawned = true
 	boss_active = true
+	_reset_active_mutator()
 	wave_active = false
 	active_enemies.clear()
 	enemy_projectiles.clear()
@@ -2603,6 +2832,7 @@ func _update_boss_system(delta: float) -> void:
 
 func _on_boss_defeated() -> void:
 	boss_active = false
+	_reset_active_mutator()
 	enemy_projectiles.clear()
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
@@ -2661,11 +2891,15 @@ func _build_continue_snapshot() -> Dictionary:
 		"skins_unlocked": skins_unlocked,
 		"secret_walls_broken": secret_walls_broken,
 		"drones_defeated": drones_defeated,
+		"elite_enemies_defeated": elite_enemies_defeated,
 		"pages_collected_this_run": pages_collected_this_run,
 		"boss_spawned": boss_spawned,
 		"dash_cooldown_remaining": dash_cooldown_remaining,
 		"max_combo_reached": max_combo_reached,
-		"dash_uses_this_run": dash_uses_this_run
+		"dash_uses_this_run": dash_uses_this_run,
+		"rift_energy": rift_energy,
+		"rift_burst_cooldown": rift_burst_cooldown,
+		"rift_bursts_used": rift_bursts_used
 	}
 
 
@@ -2687,11 +2921,16 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	skins_unlocked = int(snapshot.get("skins_unlocked", skins_unlocked))
 	secret_walls_broken = int(snapshot.get("secret_walls_broken", secret_walls_broken))
 	drones_defeated = int(snapshot.get("drones_defeated", drones_defeated))
+	elite_enemies_defeated = int(snapshot.get("elite_enemies_defeated", elite_enemies_defeated))
 	pages_collected_this_run = int(snapshot.get("pages_collected_this_run", pages_collected_this_run))
 	boss_spawned = bool(snapshot.get("boss_spawned", false))
 	dash_cooldown_remaining = float(snapshot.get("dash_cooldown_remaining", 0.0))
 	max_combo_reached = float(snapshot.get("max_combo_reached", max_combo_reached))
 	dash_uses_this_run = int(snapshot.get("dash_uses_this_run", dash_uses_this_run))
+	rift_energy = float(snapshot.get("rift_energy", rift_energy))
+	rift_burst_cooldown = float(snapshot.get("rift_burst_cooldown", rift_burst_cooldown))
+	rift_bursts_used = int(snapshot.get("rift_bursts_used", rift_bursts_used))
+	rift_energy = clamp(rift_energy, 0.0, rift_energy_max)
 	var loaded_inventory: Dictionary = snapshot.get("inventory", {})
 	if typeof(loaded_inventory) == TYPE_DICTIONARY:
 		inventory = loaded_inventory
@@ -2738,9 +2977,11 @@ func _end_run(victory: bool, reason: String) -> void:
 		drones_defeated,
 		_format_time(run_elapsed_seconds)
 	]
+	end_subtitle.text += "\nElite defeats: %d" % elite_enemies_defeated
 	var preview_score := _compute_run_score(victory)
 	end_subtitle.text += "\nRun Score: %d | Rank: %s" % [preview_score, _score_rank(preview_score)]
 	end_subtitle.text += "\nMax combo: x%.2f | Dash uses: %d" % [max_combo_reached, dash_uses_this_run]
+	end_subtitle.text += "\nRift bursts: %d" % rift_bursts_used
 	pending_result = _build_session_summary(victory, {}, reason)
 
 
@@ -2755,6 +2996,7 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"wave_reached": wave_number,
 		"duration_seconds": int(run_elapsed_seconds),
 		"drones_defeated": drones_defeated,
+		"elite_enemies_defeated": elite_enemies_defeated,
 		"bestiary_pages_collected": pages_collected_this_run,
 		"meta_xp_gain": 35 + (wave_number * 8) + (40 if victory else 0),
 		"bank_scrap_gain": bank_scrap_gain,
@@ -2764,6 +3006,7 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"rank": rank,
 		"max_combo_reached": max_combo_reached,
 		"dash_uses": dash_uses_this_run,
+		"rift_bursts_used": rift_bursts_used,
 		"tutorial_completed": tutorial_completed_this_session or bool(profile.get("tutorial_completed", false)),
 		"continue_snapshot": snapshot
 	}
@@ -2772,8 +3015,10 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 func _compute_run_score(victory: bool) -> int:
 	var score := wave_number * 100
 	score += drones_defeated * 4
+	score += elite_enemies_defeated * 28
 	score += int(round(max_combo_reached * 120.0))
 	score += pages_collected_this_run * 55
+	score += rift_bursts_used * 35
 	score += int(health)
 	score += 450 if victory else 0
 	return maxi(score, 0)
@@ -2827,6 +3072,7 @@ func _update_hud() -> void:
 	gain_page_button.disabled = input_locked
 	action_button.disabled = input_locked
 	dash_button.disabled = input_locked or dash_cooldown_remaining > 0.0 or player_state == PlayerState.RHINO_CHARGE
+	rift_burst_button.disabled = input_locked or player_state == PlayerState.RHINO_CHARGE or rift_burst_cooldown > 0.0 or rift_energy < rift_energy_max
 
 	if player_state == PlayerState.RHINO_CHARGE:
 		rhino_timer_label.text = "Rhino timer: %.1fs" % rhino_time_left
@@ -2840,12 +3086,13 @@ func _update_hud() -> void:
 	inventory_label.text = "Inventory -> Scrap:%d  Crystals:%d  Star-Melons:%d  Glow-Berries:%d" % [scrap, crystals, melons, berries]
 
 	var recipe := _current_recipe()
-	progression_label.text = "Lv %d (%d/%d XP) | Bestiary pages:%d | Entries:%d | Skins:%d | Recipe:%s [S:%d C:%d L:%d]" % [
+	progression_label.text = "Lv %d (%d/%d XP) | Bestiary pages:%d | Entries:%d | Elites:%d | Skins:%d | Recipe:%s [S:%d C:%d L:%d]" % [
 		player_level,
 		player_xp,
 		_xp_for_next_level(player_level),
 		bestiary_pages,
 		_bestiary_progress_count(),
+		elite_enemies_defeated,
 		skins_unlocked,
 		recipe.get("name", ""),
 		int(recipe.get("scrap", 0)),
@@ -2853,6 +3100,7 @@ func _update_hud() -> void:
 		int(recipe.get("unlock_level", 1))
 	]
 	quest_label.text = "Objectives: %s" % _objective_summary()
+	mutator_label.text = "Wave Mutator: %s - %s" % [active_mutator_name, active_mutator_desc]
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
 	combo_label.text = "Combo x%.2f (%d)" % [combo_multiplier, combo_streak] if combo_streak > 1 else "Combo x1.00"
@@ -2873,19 +3121,29 @@ func _update_hud() -> void:
 		dash_button.text = "DASH"
 	var active_hotbar_item := String(hotbar_items[selected_hotbar_index].get("label", "Item"))
 	hotbar_title.text = "Hotbar - %s" % active_hotbar_item
+	if rift_burst_cooldown > 0.0:
+		rift_label.text = "Rift Energy %.0f/%.0f | Burst CD %.1fs" % [rift_energy, rift_energy_max, rift_burst_cooldown]
+		rift_burst_button.text = "RIFT CD"
+	elif rift_energy >= rift_energy_max:
+		rift_label.text = "Rift Energy %.0f/%.0f | BURST READY" % [rift_energy, rift_energy_max]
+		rift_burst_button.text = "RIFT BURST"
+	else:
+		rift_label.text = "Rift Energy %.0f/%.0f | Charge by defeating enemies" % [rift_energy, rift_energy_max]
+		rift_burst_button.text = "CHARGE RIFT"
 	var ui_pulse := 0.88 + 0.12 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0))
 	var combo_glow: float = clamp((combo_multiplier - 1.0) / 1.4, 0.0, 1.0)
 	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95 + 0.05 * combo_glow, 1.0, 1.0)
 	rhino_button.modulate = Color(0.92 + 0.04 * combo_glow, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
 	scavenge_button.modulate = Color(0.90, 0.96 + 0.04 * combo_glow, 0.98 + 0.02 * ui_pulse, 1.0)
 	dash_button.modulate = Color(0.94, 0.94 + 0.06 * ui_pulse, 1.0, 1.0)
+	rift_burst_button.modulate = Color(0.84 + 0.16 * ui_pulse, 0.92 + 0.08 * combo_glow, 1.0, 1.0)
 	travel_biome_button.modulate = Color(0.92, 0.94 + 0.04 * ui_pulse, 1.0, 1.0)
 	craft_button.modulate = Color(0.92 + 0.05 * combo_glow, 0.92, 1.0, 1.0)
 	gain_page_button.modulate = Color(0.92, 0.95, 1.0, 1.0)
 	pause_button.modulate = Color(0.88 + 0.06 * ui_pulse, 0.90, 0.98, 1.0)
 	perf_metrics_label.visible = show_perf_hud
 	if show_perf_hud:
-		perf_metrics_label.text = "FPS:%d | Enemies:%d/%d | Projectiles:%d/%d | VFX:%d/%d | Rings:%d/%d | Trails:%d/%d" % [
+		perf_metrics_label.text = "FPS:%d | Enemies:%d/%d | Projectiles:%d/%d | VFX:%d/%d | Rings:%d/%d | Trails:%d/%d | Rift:%.0f" % [
 			Engine.get_frames_per_second(),
 			active_enemies.size(),
 			max_active_enemies,
@@ -2896,7 +3154,8 @@ func _update_hud() -> void:
 			vfx_shockwaves.size(),
 			max_active_shockwaves,
 			dash_afterimages.size(),
-			max_active_dash_afterimages
+			max_active_dash_afterimages,
+			rift_energy
 		]
 
 	for i in hotbar_buttons.size():
@@ -2975,6 +3234,42 @@ func _on_dash_pressed() -> void:
 	_spawn_vfx_burst(player_position, Color(0.72, 0.95, 1.0, 0.95), 10, 210.0, 0.30, 6.0)
 	_spawn_shockwave(player_position, Color(0.76, 0.96, 1.0, 0.90), 14.0, 126.0, 0.28, 3.2)
 	_trigger_screen_shake(0.10, 5.6)
+
+
+func _on_rift_burst_pressed() -> void:
+	if game_ended:
+		return
+	if rift_burst_cooldown > 0.0:
+		return
+	if rift_energy < rift_energy_max:
+		status_label.text = "Rift energy not full."
+		return
+	rift_energy = 0.0
+	rift_burst_cooldown = rift_burst_cooldown_seconds
+	rift_bursts_used += 1
+	feedback_bus.emit_feedback("boss")
+	_play_sfx("boss_alarm")
+	_spawn_shockwave(player_position, Color(0.76, 0.90, 1.0, 0.94), 28.0, rift_burst_radius + 38.0, 0.44, 5.4)
+	_spawn_vfx_burst(player_position, Color(0.76, 0.92, 1.0, 0.95), 22, 220.0, 0.38, 7.0)
+	_spawn_hit_marker(player_position + Vector2(-52, -72), "RIFT BURST", Color(0.76, 0.94, 1.0, 1.0), 0.60, 58.0)
+	_trigger_screen_shake(0.20, 10.8)
+	var kills := _damage_enemies_radius(player_position, rift_burst_radius, rift_burst_damage)
+	for i in active_enemies.size():
+		var enemy: Dictionary = active_enemies[i]
+		var enemy_position: Vector2 = enemy.get("position", Vector2.ZERO)
+		if enemy_position.distance_to(player_position) > rift_burst_radius:
+			continue
+		enemy["rift_slow_ttl"] = 1.6
+		active_enemies[i] = enemy
+	var boss_hit := false
+	if boss_active:
+		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
+		if boss_position.distance_to(player_position) <= rift_burst_radius + 80.0:
+			var direction := (boss_position - player_position).normalized()
+			if direction.length() < 0.001:
+				direction = player_direction
+			boss_hit = _damage_boss_from_attack(direction, rift_burst_damage * 0.70, rift_burst_radius + 120.0)
+	status_label.text = "Rift Burst detonated: %d enemies%s." % [kills, ", boss staggered" if boss_hit else ""]
 
 
 func _on_rhino_pressed() -> void:

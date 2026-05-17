@@ -22,6 +22,8 @@ static func default_profile() -> Dictionary:
 		"best_run_rank": "C",
 		"best_combo": 1.0,
 		"total_dash_uses": 0,
+		"total_rift_bursts": 0,
+		"total_elite_defeats": 0,
 		"total_drones_defeated": 0,
 		"total_bestiary_pages": 0,
 		"unlocked_skins": 1,
@@ -98,8 +100,10 @@ static func apply_session_result(profile: Dictionary, result: Dictionary) -> Dic
 	var run_combo := float(result.get("max_combo_reached", 1.0))
 	updated["best_combo"] = max(best_combo, run_combo)
 	updated["total_dash_uses"] = int(updated.get("total_dash_uses", 0)) + int(result.get("dash_uses", 0))
+	updated["total_rift_bursts"] = int(updated.get("total_rift_bursts", 0)) + int(result.get("rift_bursts_used", 0))
 
 	updated["total_drones_defeated"] = int(updated.get("total_drones_defeated", 0)) + int(result.get("drones_defeated", 0))
+	updated["total_elite_defeats"] = int(updated.get("total_elite_defeats", 0)) + int(result.get("elite_enemies_defeated", 0))
 	updated["total_bestiary_pages"] = int(updated.get("total_bestiary_pages", 0)) + int(result.get("bestiary_pages_collected", 0))
 
 	var bank: Dictionary = updated.get("resources_bank", {})

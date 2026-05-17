@@ -666,7 +666,7 @@ func _refresh_menu() -> void:
 		daily_reward_button.text = "Reward Claimed Today"
 	else:
 		daily_reward_button.text = "Claim Daily Reward (Streak %d)" % int(profile.get("daily_streak", 0))
-	profile_label.text = "Meta Lv %d (%d XP) | Runs: %d | Wins: %d | Best Wave: %d | Best Rank: %s | Best Score: %d\nDrones Defeated: %d | Bestiary Pages: %d | Best Combo: x%.2f | Total Dashes: %d" % [
+	profile_label.text = "Meta Lv %d (%d XP) | Runs: %d | Wins: %d | Best Wave: %d | Best Rank: %s | Best Score: %d\nDrones Defeated: %d | Elite Defeats: %d | Bestiary Pages: %d | Best Combo: x%.2f | Total Dashes: %d | Rift Bursts: %d" % [
 		int(profile.get("meta_level", 1)),
 		int(profile.get("meta_xp", 0)),
 		int(profile.get("total_runs", 0)),
@@ -675,9 +675,11 @@ func _refresh_menu() -> void:
 		String(profile.get("best_run_rank", "C")),
 		int(profile.get("best_run_score", 0)),
 		int(profile.get("total_drones_defeated", 0)),
+		int(profile.get("total_elite_defeats", 0)),
 		int(profile.get("total_bestiary_pages", 0)),
 		float(profile.get("best_combo", 1.0)),
-		int(profile.get("total_dash_uses", 0))
+		int(profile.get("total_dash_uses", 0)),
+		int(profile.get("total_rift_bursts", 0))
 	]
 	if bool(profile.get("tutorial_completed", false)):
 		status_label.text = "Ready for deployment builds and Play Store progression testing. Daily streak: %d" % int(profile.get("daily_streak", 0))
