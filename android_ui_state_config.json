@@ -181,11 +181,14 @@
     "baseHealth": 1800,
     "healthPerWave": 80,
     "contactDamage": 16,
-    "shockwaveDamage": 18
+    "shockwaveDamage": 18,
+    "shockwaveIntervalSeconds": 2.4
   },
   "combatPolish": {
+    "attackCooldownSeconds": 0.24,
     "dashCooldownSeconds": 2.4,
     "dashDurationSeconds": 0.22,
+    "dashSpeedMultiplier": 2.7,
     "comboTimeoutSeconds": 4.0,
     "spitterProjectileSpeed": 420,
     "spitterProjectileDamage": 8
