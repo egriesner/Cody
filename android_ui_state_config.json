@@ -259,6 +259,12 @@
       }
     ]
   },
+  "mapPolish": {
+    "obstacleCount": 9,
+    "detailCount": 30,
+    "animationStrength": 1.0,
+    "obstaclePadding": 62
+  },
   "tutorial": {
     "enabled": true,
     "allowSkip": true,

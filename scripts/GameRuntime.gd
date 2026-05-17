@@ -374,6 +374,13 @@ var mutator_intensity_multiplier := 1.0
 var elite_spawn_chance_multiplier := 1.0
 var rift_energy_gain_multiplier := 1.0
 var web_tutorial_auto_skipped := false
+var map_obstacles: Array[Dictionary] = []
+var map_details: Array[Dictionary] = []
+var map_layout_revision := 0
+var map_obstacle_count := 8
+var map_detail_count := 26
+var map_animation_strength := 1.0
+var map_obstacle_padding := 60.0
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -392,6 +399,7 @@ func _ready() -> void:
 	_apply_hud_visual_mode()
 	_recalculate_input_regions()
 	player_position = get_viewport_rect().size * 0.5
+	_generate_map_layout(true)
 	status_label.text = "Run started. Track, craft, survive."
 	_apply_hotbar_context_rules()
 	if OS.has_feature("web") and tutorial_enabled and not bool(profile.get("tutorial_completed", false)):
@@ -755,6 +763,7 @@ func _draw() -> void:
 		draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.06), true)
 		draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.06), true)
 	draw_rect(Rect2(0, 70, screen_size.x, 6), Color(0.26, 0.85, 1.0, 0.22))
+	_draw_map_terrain(world_offset, time_seconds, pulse)
 
 	var player_color := Color("#76efff")
 	var player_draw_position := player_position + world_offset
@@ -980,6 +989,186 @@ func _biome_palette(index: int) -> Dictionary:
 	}
 
 
+func _draw_map_terrain(world_offset: Vector2, time_seconds: float, pulse: float) -> void:
+	for detail in map_details:
+		var detail_pos: Vector2 = detail.get("position", Vector2.ZERO) + world_offset * 0.64
+		var detail_radius: float = float(detail.get("radius", 24.0))
+		var detail_alpha: float = float(detail.get("alpha", 0.18))
+		var detail_speed: float = float(detail.get("speed", 1.0))
+		var detail_phase: float = float(detail.get("phase", 0.0))
+		var detail_color: Color = detail.get("color", Color(0.42, 0.82, 1.0, 0.20))
+		var detail_glow: float = 0.5 + 0.5 * sin(time_seconds * detail_speed + detail_phase)
+		var detail_scale: float = 0.88 + 0.26 * detail_glow
+		draw_circle(detail_pos, detail_radius * detail_scale, Color(detail_color.r, detail_color.g, detail_color.b, detail_alpha * (0.44 + 0.56 * detail_glow)))
+		if performance_mode == "quality":
+			draw_arc(detail_pos, detail_radius * (1.15 + 0.05 * pulse), 0.0, TAU, 28, Color(detail_color.r, detail_color.g, detail_color.b, detail_alpha * 0.38), 1.6, true)
+
+	for obstacle in map_obstacles:
+		var obstacle_pos: Vector2 = obstacle.get("position", Vector2.ZERO) + world_offset * 0.90
+		var obstacle_radius: float = float(obstacle.get("radius", 44.0))
+		var obstacle_phase: float = float(obstacle.get("phase", 0.0))
+		var obstacle_spin: float = float(obstacle.get("spin", 1.0))
+		var obstacle_style: String = String(obstacle.get("style", "rift_crystal"))
+		var palette: Dictionary = _obstacle_palette(obstacle_style)
+		var base_color: Color = palette.get("base", Color(0.22, 0.56, 0.78, 0.82))
+		var accent_color: Color = palette.get("accent", Color(0.74, 0.96, 1.0, 0.86))
+		var trim_color: Color = palette.get("trim", Color(0.90, 0.98, 1.0, 0.84))
+		var sway: float = sin(time_seconds * (1.2 + obstacle_spin * 0.3) + obstacle_phase) * 0.16 * map_animation_strength
+		var aura_pulse: float = 0.5 + 0.5 * sin(time_seconds * (2.2 + obstacle_spin * 0.4) + obstacle_phase * 1.7)
+		draw_circle(obstacle_pos + Vector2(0.0, obstacle_radius * 0.42), obstacle_radius * 0.76, Color(0.0, 0.0, 0.0, 0.20))
+		draw_circle(obstacle_pos, obstacle_radius, Color(base_color.r, base_color.g, base_color.b, base_color.a))
+		draw_arc(obstacle_pos, obstacle_radius + 7.0 + 3.0 * sway, time_seconds * 0.6 + obstacle_phase, time_seconds * 0.6 + obstacle_phase + TAU, 38, Color(accent_color.r, accent_color.g, accent_color.b, 0.30 + aura_pulse * 0.32), 2.6, true)
+		draw_arc(obstacle_pos, obstacle_radius * 0.66, -TAU * 0.25 + sway, TAU * 0.70 + sway, 22, Color(trim_color.r, trim_color.g, trim_color.b, 0.44 + 0.20 * aura_pulse), 2.2, true)
+		if obstacle_style == "rift_crystal":
+			var top := obstacle_pos + Vector2(0.0, -obstacle_radius * (0.82 + 0.08 * sway))
+			draw_line(obstacle_pos, top, Color(trim_color.r, trim_color.g, trim_color.b, 0.80), 3.2)
+			draw_circle(top, obstacle_radius * 0.18, Color(accent_color.r, accent_color.g, accent_color.b, 0.74))
+		elif obstacle_style == "scrap_tower":
+			var left_arm := obstacle_pos + Vector2(-obstacle_radius * 0.64, -obstacle_radius * 0.22)
+			var right_arm := obstacle_pos + Vector2(obstacle_radius * 0.64, -obstacle_radius * 0.22)
+			draw_line(left_arm, right_arm, Color(trim_color.r, trim_color.g, trim_color.b, 0.64), 4.0)
+			draw_circle(left_arm, obstacle_radius * 0.12, Color(accent_color.r, accent_color.g, accent_color.b, 0.60))
+			draw_circle(right_arm, obstacle_radius * 0.12, Color(accent_color.r, accent_color.g, accent_color.b, 0.60))
+		elif obstacle_style == "growth_pod":
+			draw_circle(obstacle_pos + Vector2(obstacle_radius * 0.32, -obstacle_radius * 0.28), obstacle_radius * 0.32, Color(trim_color.r, trim_color.g, trim_color.b, 0.48))
+		else:
+			var conduit_phase: float = time_seconds * (2.5 + obstacle_spin) + obstacle_phase
+			var conduit_tip := obstacle_pos + Vector2(cos(conduit_phase), sin(conduit_phase)) * obstacle_radius * 0.74
+			draw_line(obstacle_pos, conduit_tip, Color(accent_color.r, accent_color.g, accent_color.b, 0.70), 2.4)
+			draw_circle(conduit_tip, obstacle_radius * 0.12, Color(trim_color.r, trim_color.g, trim_color.b, 0.72))
+
+
+func _obstacle_palette(style: String) -> Dictionary:
+	match style:
+		"scrap_tower":
+			return {
+				"base": Color(0.30, 0.32, 0.40, 0.86),
+				"accent": Color(0.74, 0.88, 1.0, 0.82),
+				"trim": Color(0.50, 0.70, 0.92, 0.82)
+			}
+		"growth_pod":
+			return {
+				"base": Color(0.20, 0.46, 0.32, 0.82),
+				"accent": Color(0.52, 0.96, 0.66, 0.84),
+				"trim": Color(0.82, 1.0, 0.90, 0.80)
+			}
+		"plasma_conduit":
+			return {
+				"base": Color(0.30, 0.22, 0.52, 0.84),
+				"accent": Color(0.86, 0.62, 1.0, 0.86),
+				"trim": Color(0.94, 0.84, 1.0, 0.82)
+			}
+		_:
+			return {
+				"base": Color(0.20, 0.50, 0.72, 0.84),
+				"accent": Color(0.72, 0.94, 1.0, 0.86),
+				"trim": Color(0.90, 0.98, 1.0, 0.82)
+			}
+
+
+func _generate_map_layout(force_new_seed: bool) -> void:
+	if viewport_size.x < 8.0 or viewport_size.y < 8.0:
+		return
+	if force_new_seed:
+		map_layout_revision += 1
+	map_obstacles.clear()
+	map_details.clear()
+
+	var rng := RandomNumberGenerator.new()
+	var seed_value: int = int(104729 * (current_biome_index + 1) + 8191 * map_layout_revision + 157 * max(1, wave_number))
+	rng.seed = seed_value
+
+	var obstacle_target: int = maxi(4, int(round(float(map_obstacle_count) * (0.82 if performance_mode == "performance" else 1.0))))
+	var detail_target: int = maxi(10, int(round(float(map_detail_count) * (0.72 if performance_mode == "performance" else 1.0))))
+	var obstacle_styles: Array[String] = _obstacle_style_pool_for_biome(current_biome_index)
+
+	var left_bound: float = left_dead_zone_px + 140.0
+	var right_bound: float = viewport_size.x - right_dead_zone_px - 140.0
+	var top_bound: float = 370.0
+	var bottom_bound: float = viewport_size.y - 130.0
+	if right_bound <= left_bound + 50.0 or bottom_bound <= top_bound + 50.0:
+		return
+
+	var attempts := 0
+	var max_attempts: int = obstacle_target * 32
+	while map_obstacles.size() < obstacle_target and attempts < max_attempts:
+		attempts += 1
+		var candidate_radius: float = rng.randf_range(34.0, 66.0)
+		var candidate_pos := Vector2(rng.randf_range(left_bound, right_bound), rng.randf_range(top_bound, bottom_bound))
+		if candidate_pos.distance_to(player_position) < candidate_radius + 170.0:
+			continue
+		var valid := true
+		for existing in map_obstacles:
+			var existing_pos: Vector2 = existing.get("position", Vector2.ZERO)
+			var existing_radius: float = float(existing.get("radius", 46.0))
+			if candidate_pos.distance_to(existing_pos) < candidate_radius + existing_radius + map_obstacle_padding:
+				valid = false
+				break
+		if not valid:
+			continue
+		var style_idx: int = int(rng.randi_range(0, obstacle_styles.size() - 1))
+		map_obstacles.append({
+			"position": candidate_pos,
+			"radius": candidate_radius,
+			"style": obstacle_styles[style_idx],
+			"phase": rng.randf_range(0.0, TAU),
+			"spin": rng.randf_range(0.8, 1.4)
+		})
+
+	for _i in detail_target:
+		var detail_pos := Vector2(rng.randf_range(left_dead_zone_px + 70.0, viewport_size.x - right_dead_zone_px - 70.0), rng.randf_range(310.0, viewport_size.y - 80.0))
+		var detail_palette: Dictionary = _biome_palette(current_biome_index)
+		var detail_color: Color = detail_palette.get("fog", Color(0.28, 0.54, 0.86, 0.18))
+		map_details.append({
+			"position": detail_pos,
+			"radius": rng.randf_range(18.0, 56.0),
+			"alpha": rng.randf_range(0.10, 0.24),
+			"speed": rng.randf_range(0.7, 1.8),
+			"phase": rng.randf_range(0.0, TAU),
+			"color": Color(detail_color.r, detail_color.g, detail_color.b, 1.0)
+		})
+
+
+func _obstacle_style_pool_for_biome(index: int) -> Array[String]:
+	match index:
+		0:
+			return ["scrap_tower", "rift_crystal", "scrap_tower", "plasma_conduit"]
+		1:
+			return ["rift_crystal", "plasma_conduit", "growth_pod", "rift_crystal"]
+		2:
+			return ["plasma_conduit", "growth_pod", "rift_crystal", "plasma_conduit"]
+	return ["rift_crystal", "scrap_tower", "plasma_conduit"]
+
+
+func _resolve_obstacle_collision(target_position: Vector2, entity_radius: float) -> Vector2:
+	var resolved_position: Vector2 = target_position
+	for obstacle in map_obstacles:
+		var obstacle_position: Vector2 = obstacle.get("position", Vector2.ZERO)
+		var obstacle_radius: float = float(obstacle.get("radius", 40.0))
+		var required_distance: float = obstacle_radius + entity_radius
+		var to_entity: Vector2 = resolved_position - obstacle_position
+		var distance: float = to_entity.length()
+		if distance >= required_distance:
+			continue
+		if distance <= 0.001:
+			var nudge_angle: float = float(obstacle.get("phase", 0.0))
+			resolved_position = obstacle_position + Vector2.RIGHT.rotated(nudge_angle) * required_distance
+		else:
+			resolved_position = obstacle_position + (to_entity / distance) * required_distance
+	resolved_position.x = clamp(resolved_position.x, left_dead_zone_px + 30.0, viewport_size.x - right_dead_zone_px - 30.0)
+	resolved_position.y = clamp(resolved_position.y, 320.0, viewport_size.y - 70.0)
+	return resolved_position
+
+
+func _map_obstacle_hit(position: Vector2, collider_radius: float) -> bool:
+	for obstacle in map_obstacles:
+		var obstacle_position: Vector2 = obstacle.get("position", Vector2.ZERO)
+		var obstacle_radius: float = float(obstacle.get("radius", 40.0))
+		if obstacle_position.distance_to(position) <= obstacle_radius + collider_radius:
+			return true
+	return false
+
+
 func _load_config() -> void:
 	wave_mutator_pool = _default_wave_mutator_pool()
 	var file := FileAccess.open("res://android_ui_state_config.json", FileAccess.READ)
@@ -1071,6 +1260,12 @@ func _load_config() -> void:
 	if wave_mutator_pool.is_empty():
 		wave_mutator_pool = _default_wave_mutator_pool()
 	_reset_active_mutator()
+
+	var map_polish: Dictionary = config.get("mapPolish", {})
+	map_obstacle_count = int(map_polish.get("obstacleCount", map_obstacle_count))
+	map_detail_count = int(map_polish.get("detailCount", map_detail_count))
+	map_animation_strength = float(map_polish.get("animationStrength", map_animation_strength))
+	map_obstacle_padding = float(map_polish.get("obstaclePadding", map_obstacle_padding))
 
 	var tutorial_config: Dictionary = config.get("tutorial", {})
 	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
@@ -1953,6 +2148,7 @@ func _recalculate_input_regions() -> void:
 		end_panel.position = (viewport_size - end_panel.size) * 0.5
 	if tutorial_panel:
 		tutorial_panel.position = (viewport_size - tutorial_panel.size) * 0.5
+	_generate_map_layout(false)
 
 
 func _rect_from_norm(source: Dictionary, fallback: Rect2) -> Rect2:
@@ -2278,6 +2474,7 @@ func _apply_hotbar_context_rules() -> void:
 
 
 func _update_movement(delta: float) -> void:
+	var previous_position: Vector2 = player_position
 	var velocity := left_vector
 	var speed := base_move_speed * state_move_speed_multiplier * loadout_move_speed_multiplier
 	if dash_time_left > 0.0:
@@ -2292,6 +2489,9 @@ func _update_movement(delta: float) -> void:
 	player_position += velocity * speed * delta
 	player_position.x = clamp(player_position.x, left_dead_zone_px + 30.0, viewport_size.x - right_dead_zone_px - 30.0)
 	player_position.y = clamp(player_position.y, 320.0, viewport_size.y - 70.0)
+	player_position = _resolve_obstacle_collision(player_position, 28.0)
+	if player_position.distance_to(previous_position) < 0.5 and velocity.length() > 0.35:
+		_spawn_vfx_burst(player_position + velocity.normalized() * 20.0, Color(0.58, 0.88, 1.0, 0.24), 1, 60.0, 0.08, 2.6)
 
 
 func _update_combat(delta: float) -> void:
@@ -2612,6 +2812,7 @@ func _update_enemies(delta: float) -> void:
 		enemy_position += (direction + drift).normalized() * enemy_speed * delta
 		enemy_position.x = clamp(enemy_position.x, left_dead_zone_px + 35.0, viewport_size.x - right_dead_zone_px - 35.0)
 		enemy_position.y = clamp(enemy_position.y, 330.0, viewport_size.y - 60.0)
+		enemy_position = _resolve_obstacle_collision(enemy_position, 20.0)
 		enemy["position"] = enemy_position
 		active_enemies[i] = enemy
 
@@ -2659,6 +2860,12 @@ func _update_enemy_projectiles(delta: float) -> void:
 			continue
 		if position.y < 310.0 or position.y > viewport_size.y - 44.0:
 			to_remove.append(i)
+			continue
+		if _map_obstacle_hit(position, 8.0):
+			to_remove.append(i)
+			_spawn_vfx_burst(position, Color(0.66, 0.96, 1.0, 0.78), 2, 80.0, 0.12, 3.4)
+			if performance_mode != "performance":
+				_spawn_shockwave(position, Color(0.60, 0.92, 1.0, 0.48), 4.0, 40.0, 0.10, 1.8)
 			continue
 		var distance_to_player: float = position.distance_to(player_position)
 		if not near_miss_emitted and distance_to_player <= projectile_near_miss_radius and distance_to_player > 34.0:
@@ -3139,6 +3346,7 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	var loaded_objectives: Array = snapshot.get("objectives", [])
 	if typeof(loaded_objectives) == TYPE_ARRAY:
 		objectives = loaded_objectives
+	_generate_map_layout(false)
 	companion_select.select(0 if companion_id == "keeley" else 1)
 	_apply_companion_portrait()
 	keeley_upgrade_toggle.button_pressed = keeley_dna_upgrade
@@ -3257,7 +3465,7 @@ func _update_hud() -> void:
 		difficulty_name.capitalize(),
 		performance_mode.capitalize()
 	]
-	biome_label.text = "Biome: %s" % biome_names[current_biome_index]
+	biome_label.text = "Biome: %s | Terrain:%d" % [biome_names[current_biome_index], map_obstacles.size()]
 	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]
 	if boss_active and boss_shockwave_telegraph_armed:
 		boss_label.text = "Boss: Shockwave in %.1fs" % max(0.0, boss_attack_tick)
@@ -3504,6 +3712,7 @@ func _on_travel_biome_pressed() -> void:
 	if game_ended:
 		return
 	current_biome_index = (current_biome_index + 1) % biome_names.size()
+	_generate_map_layout(true)
 	status_label.text = "Moved to biome: %s" % biome_names[current_biome_index]
 	_play_sfx("ui_click")
 	_update_biome_music()
