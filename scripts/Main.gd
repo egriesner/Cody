@@ -4,6 +4,9 @@ const GAME_RUNTIME_SCRIPT := preload("res://scripts/GameRuntime.gd")
 const SAVE_MANAGER_SCRIPT := preload("res://scripts/SaveManager.gd")
 const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
 const STUDIO_SPLASH_PATH := "res://assets/branding/code_maxx_studios_intro.svg"
+const MENU_MUSIC_PATH := "res://assets/audio/music/menu_theme.wav"
+const STUDIO_STING_PATH := "res://assets/audio/sfx/studio_sting.wav"
+const MENU_UI_CLICK_PATH := "res://assets/audio/sfx/ui_click.wav"
 const PANEL_TOP_PATH := "res://assets/artpack/ui/hud_top_panel.svg"
 const PANEL_BOTTOM_PATH := "res://assets/artpack/ui/hud_bottom_panel.svg"
 const BUTTON_PRIMARY_PATH := "res://assets/artpack/ui/button_primary.svg"
@@ -36,6 +39,17 @@ var panel_bottom_texture: Texture2D
 var button_primary_texture: Texture2D
 var button_secondary_texture: Texture2D
 var studio_splash_texture: Texture2D
+var menu_music_stream: AudioStream
+var studio_sting_stream: AudioStream
+var menu_ui_click_stream: AudioStream
+var menu_music_player: AudioStreamPlayer
+var menu_sfx_player: AudioStreamPlayer
+var menu_music_tween: Tween
+var menu_bg_texture_rect: TextureRect
+var menu_bg_glow_overlay: ColorRect
+var menu_panel_base_position := Vector2.ZERO
+var intro_logo_base_position := Vector2.ZERO
+var interactive_buttons: Array[Button] = []
 var intro_overlay: Control
 var intro_logo: TextureRect
 var intro_tween: Tween
@@ -47,6 +61,7 @@ func _ready() -> void:
 	_load_visual_assets()
 	_apply_master_volume_from_profile()
 	_build_menu_ui()
+	_setup_menu_audio()
 	_build_intro_splash()
 	_refresh_menu()
 	_play_intro_if_available()
@@ -67,12 +82,21 @@ func _load_visual_assets() -> void:
 	panel_bottom_texture = _load_texture_if_exists(PANEL_BOTTOM_PATH)
 	button_primary_texture = _load_texture_if_exists(BUTTON_PRIMARY_PATH)
 	button_secondary_texture = _load_texture_if_exists(BUTTON_SECONDARY_PATH)
+	menu_music_stream = _load_audio_stream_if_exists(MENU_MUSIC_PATH)
+	studio_sting_stream = _load_audio_stream_if_exists(STUDIO_STING_PATH)
+	menu_ui_click_stream = _load_audio_stream_if_exists(MENU_UI_CLICK_PATH)
 
 
 func _load_texture_if_exists(path: String) -> Texture2D:
 	if not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+
+func _load_audio_stream_if_exists(path: String) -> AudioStream:
+	if not ResourceLoader.exists(path):
+		return null
+	return load(path) as AudioStream
 
 
 func _apply_master_volume_from_profile() -> void:
@@ -87,26 +111,109 @@ func _apply_master_volume_from_profile() -> void:
 		AudioServer.set_bus_volume_db(bus_index, linear_to_db(clamp(volume, 0.0001, 1.0)))
 
 
+func _process(_delta: float) -> void:
+	var t: float = float(Time.get_ticks_msec()) / 1000.0
+	if menu_bg_texture_rect != null:
+		var viewport_size := get_viewport_rect().size
+		var drift := Vector2(sin(t * 0.16), cos(t * 0.13)) * 10.0
+		menu_bg_texture_rect.position = drift - Vector2(40, 26)
+		menu_bg_texture_rect.size = viewport_size + Vector2(80, 52)
+	if menu_bg_glow_overlay != null:
+		var glow: float = 0.18 + 0.06 * (0.5 + 0.5 * sin(t * 1.3))
+		menu_bg_glow_overlay.color = Color(0.08, 0.18, 0.38, glow)
+	if menu_panel != null and menu_panel.visible:
+		menu_panel.position.y = menu_panel_base_position.y + sin(t * 0.95) * 4.0
+	if title_label != null:
+		title_label.modulate = Color(0.92 + 0.08 * (0.5 + 0.5 * sin(t * 2.2)), 0.98, 1.0, 1.0)
+	if subtitle_label != null:
+		subtitle_label.modulate = Color(0.82, 0.94 + 0.06 * (0.5 + 0.5 * sin(t * 1.8)), 1.0, 1.0)
+	if intro_active and intro_logo != null:
+		intro_logo.position.y = intro_logo_base_position.y + sin(t * 2.0) * 6.0
+
+
+func _setup_menu_audio() -> void:
+	menu_music_player = AudioStreamPlayer.new()
+	menu_music_player.bus = "Master"
+	add_child(menu_music_player)
+	menu_music_player.stream = menu_music_stream
+	menu_music_player.autoplay = false
+	menu_music_player.volume_db = -20.0
+	if menu_music_stream != null:
+		menu_music_player.play()
+
+	menu_sfx_player = AudioStreamPlayer.new()
+	menu_sfx_player.bus = "Master"
+	add_child(menu_sfx_player)
+	_apply_menu_audio_mix()
+	_fade_menu_music_to(_menu_music_target_db(), 0.65)
+
+
+func _menu_music_target_db() -> float:
+	var settings: Dictionary = profile.get("settings", {})
+	var music_volume: float = float(settings.get("music_volume", 0.85))
+	var adjusted: float = clamp(music_volume * 0.72, 0.0001, 1.0)
+	return -80.0 if music_volume <= 0.0001 else linear_to_db(adjusted)
+
+
+func _apply_menu_audio_mix() -> void:
+	if menu_music_player != null:
+		if menu_music_stream == null:
+			menu_music_player.stop()
+		elif not menu_music_player.playing:
+			menu_music_player.play()
+	if menu_sfx_player != null:
+		var settings: Dictionary = profile.get("settings", {})
+		var sfx_volume: float = float(settings.get("sfx_volume", 0.90))
+		menu_sfx_player.volume_db = -80.0 if sfx_volume <= 0.0001 else linear_to_db(clamp(sfx_volume, 0.0001, 1.0))
+
+
+func _fade_menu_music_to(target_db: float, duration: float) -> void:
+	if menu_music_player == null:
+		return
+	if menu_music_tween != null:
+		menu_music_tween.kill()
+	menu_music_tween = create_tween()
+	menu_music_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	menu_music_tween.tween_property(menu_music_player, "volume_db", target_db, duration)
+
+
+func _play_menu_sfx(stream: AudioStream = null, pitch: float = 1.0) -> void:
+	if menu_sfx_player == null:
+		return
+	var selected_stream: AudioStream = stream if stream != null else menu_ui_click_stream
+	if selected_stream == null:
+		return
+	menu_sfx_player.pitch_scale = pitch
+	menu_sfx_player.stream = selected_stream
+	menu_sfx_player.play()
+
+
 func _build_menu_ui() -> void:
 	set_anchors_preset(PRESET_FULL_RECT)
 	if concept_bg_texture != null:
-		var bg_texture := TextureRect.new()
-		bg_texture.texture = concept_bg_texture
-		bg_texture.set_anchors_preset(PRESET_FULL_RECT)
-		bg_texture.stretch_mode = TextureRect.STRETCH_SCALE
-		bg_texture.modulate = Color(1.0, 1.0, 1.0, 0.40)
-		bg_texture.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		add_child(bg_texture)
+		menu_bg_texture_rect = TextureRect.new()
+		menu_bg_texture_rect.texture = concept_bg_texture
+		menu_bg_texture_rect.set_anchors_preset(PRESET_FULL_RECT)
+		menu_bg_texture_rect.stretch_mode = TextureRect.STRETCH_SCALE
+		menu_bg_texture_rect.modulate = Color(1.0, 1.0, 1.0, 0.40)
+		menu_bg_texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(menu_bg_texture_rect)
 
 	var bg_overlay := ColorRect.new()
 	bg_overlay.color = Color(0.03, 0.07, 0.15, 0.88)
 	bg_overlay.set_anchors_preset(PRESET_FULL_RECT)
 	bg_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(bg_overlay)
+	menu_bg_glow_overlay = ColorRect.new()
+	menu_bg_glow_overlay.color = Color(0.08, 0.18, 0.38, 0.20)
+	menu_bg_glow_overlay.set_anchors_preset(PRESET_FULL_RECT)
+	menu_bg_glow_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(menu_bg_glow_overlay)
 
 	menu_panel = Panel.new()
 	menu_panel.size = Vector2(980, 640)
 	menu_panel.position = Vector2(470, 180)
+	menu_panel_base_position = menu_panel.position
 	add_child(menu_panel)
 
 	title_label = Label.new()
@@ -138,6 +245,7 @@ func _build_menu_ui() -> void:
 	new_run_button.position = Vector2(90, 360)
 	new_run_button.size = Vector2(250, 62)
 	new_run_button.pressed.connect(_on_new_run_pressed)
+	_register_interactive_button(new_run_button)
 	menu_panel.add_child(new_run_button)
 
 	continue_button = Button.new()
@@ -145,6 +253,7 @@ func _build_menu_ui() -> void:
 	continue_button.position = Vector2(365, 360)
 	continue_button.size = Vector2(250, 62)
 	continue_button.pressed.connect(_on_continue_pressed)
+	_register_interactive_button(continue_button)
 	menu_panel.add_child(continue_button)
 
 	daily_reward_button = Button.new()
@@ -152,6 +261,7 @@ func _build_menu_ui() -> void:
 	daily_reward_button.position = Vector2(365, 436)
 	daily_reward_button.size = Vector2(250, 50)
 	daily_reward_button.pressed.connect(_on_claim_daily_reward_pressed)
+	_register_interactive_button(daily_reward_button)
 	menu_panel.add_child(daily_reward_button)
 
 	var settings_button := Button.new()
@@ -159,6 +269,7 @@ func _build_menu_ui() -> void:
 	settings_button.position = Vector2(640, 360)
 	settings_button.size = Vector2(250, 62)
 	settings_button.pressed.connect(_on_settings_pressed)
+	_register_interactive_button(settings_button)
 	menu_panel.add_child(settings_button)
 
 	var docs_label := Label.new()
@@ -294,6 +405,7 @@ func _build_settings_panel() -> void:
 	save_button.position = Vector2(112, 420)
 	save_button.size = Vector2(200, 54)
 	save_button.pressed.connect(_on_save_settings_pressed)
+	_register_interactive_button(save_button)
 	settings_panel.add_child(save_button)
 
 	var close_button := Button.new()
@@ -301,6 +413,7 @@ func _build_settings_panel() -> void:
 	close_button.position = Vector2(380, 420)
 	close_button.size = Vector2(200, 54)
 	close_button.pressed.connect(_on_close_settings_pressed)
+	_register_interactive_button(close_button)
 	settings_panel.add_child(close_button)
 
 	var replay_tutorial_button := Button.new()
@@ -308,6 +421,7 @@ func _build_settings_panel() -> void:
 	replay_tutorial_button.position = Vector2(222, 490)
 	replay_tutorial_button.size = Vector2(276, 44)
 	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
+	_register_interactive_button(replay_tutorial_button)
 	settings_panel.add_child(replay_tutorial_button)
 
 
@@ -328,6 +442,7 @@ func _build_intro_splash() -> void:
 	intro_logo = TextureRect.new()
 	intro_logo.texture = studio_splash_texture
 	intro_logo.position = Vector2(520, 170)
+	intro_logo_base_position = intro_logo.position
 	intro_logo.size = Vector2(880, 560)
 	intro_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	intro_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -353,14 +468,18 @@ func _build_intro_splash() -> void:
 
 func _play_intro_if_available() -> void:
 	if studio_splash_texture == null or intro_overlay == null:
+		_fade_menu_music_to(_menu_music_target_db(), 0.45)
 		return
 	intro_active = true
 	intro_overlay.visible = true
 	intro_overlay.modulate = Color(1, 1, 1, 0)
 	intro_logo.scale = Vector2(0.90, 0.90)
+	intro_logo.position = intro_logo_base_position
 	menu_panel.visible = false
 	settings_panel.visible = false
 	status_label.text = "Launching..."
+	_play_menu_sfx(studio_sting_stream, 1.0)
+	_fade_menu_music_to(-18.0, 0.20)
 
 	if intro_tween != null:
 		intro_tween.kill()
@@ -394,6 +513,7 @@ func _finish_intro_splash() -> void:
 		intro_overlay.visible = false
 	menu_panel.visible = true
 	settings_panel.visible = false
+	_fade_menu_music_to(_menu_music_target_db(), 0.45)
 	_refresh_menu()
 
 
@@ -435,6 +555,46 @@ func _style_button(button: Button, primary: bool = false) -> void:
 		button.add_theme_stylebox_override("normal", fallback)
 		button.add_theme_stylebox_override("hover", fallback)
 		button.add_theme_stylebox_override("pressed", fallback)
+
+
+func _register_interactive_button(button: Button) -> void:
+	interactive_buttons.append(button)
+	button.mouse_entered.connect(_on_button_hover_entered.bind(button))
+	button.mouse_exited.connect(_on_button_hover_exited.bind(button))
+	button.button_down.connect(_on_button_down.bind(button))
+	button.button_up.connect(_on_button_up.bind(button))
+	button.pressed.connect(_on_button_pressed_feedback.bind(button))
+
+
+func _tween_button_feedback(button: Button, scale_target: Vector2, modulate_target: Color, duration: float) -> void:
+	var existing_tween: Variant = button.get_meta("feedback_tween", null)
+	if existing_tween is Tween:
+		(existing_tween as Tween).kill()
+	var tween := create_tween()
+	tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", scale_target, duration)
+	tween.parallel().tween_property(button, "modulate", modulate_target, duration)
+	button.set_meta("feedback_tween", tween)
+
+
+func _on_button_hover_entered(button: Button) -> void:
+	_tween_button_feedback(button, Vector2(1.03, 1.03), Color(1.04, 1.04, 1.08, 1.0), 0.10)
+
+
+func _on_button_hover_exited(button: Button) -> void:
+	_tween_button_feedback(button, Vector2.ONE, Color(1, 1, 1, 1), 0.12)
+
+
+func _on_button_down(button: Button) -> void:
+	_tween_button_feedback(button, Vector2(0.97, 0.97), Color(0.95, 0.95, 1.0, 1.0), 0.06)
+
+
+func _on_button_up(button: Button) -> void:
+	_tween_button_feedback(button, Vector2.ONE, Color(1, 1, 1, 1), 0.10)
+
+
+func _on_button_pressed_feedback(_button: Button) -> void:
+	_play_menu_sfx(menu_ui_click_stream, randf_range(0.96, 1.05))
 
 
 func _style_controls_recursive(root: Node) -> void:
@@ -539,6 +699,7 @@ func _launch_runtime(use_continue_snapshot: bool) -> void:
 	runtime.checkpoint_updated.connect(_on_runtime_checkpoint_updated)
 	active_runtime = runtime
 	add_child(runtime)
+	_fade_menu_music_to(-36.0, 0.35)
 	menu_panel.visible = false
 	settings_panel.visible = false
 	status_label.text = "Run in progress..."
@@ -551,6 +712,8 @@ func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
 	_refresh_menu()
 	menu_panel.visible = true
 	settings_panel.visible = false
+	_apply_menu_audio_mix()
+	_fade_menu_music_to(_menu_music_target_db(), 0.55)
 	if active_runtime != null and is_instance_valid(active_runtime):
 		active_runtime = null
 	status_label.text = "Run complete: %s" % ("Victory" if victory else "Session ended")
@@ -571,6 +734,12 @@ func _on_continue_pressed() -> void:
 
 func _on_settings_pressed() -> void:
 	settings_panel.visible = true
+	settings_panel.modulate = Color(1, 1, 1, 0.0)
+	settings_panel.scale = Vector2(0.96, 0.96)
+	var reveal_tween := create_tween()
+	reveal_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	reveal_tween.tween_property(settings_panel, "modulate:a", 1.0, 0.18)
+	reveal_tween.parallel().tween_property(settings_panel, "scale", Vector2.ONE, 0.20)
 
 
 func _on_save_settings_pressed() -> void:
@@ -600,11 +769,21 @@ func _on_save_settings_pressed() -> void:
 	profile["settings"] = settings
 	_save_profile()
 	_apply_master_volume_from_profile()
+	_apply_menu_audio_mix()
+	_fade_menu_music_to(_menu_music_target_db(), 0.24)
 	status_label.text = "Settings saved."
 
 
 func _on_close_settings_pressed() -> void:
-	settings_panel.visible = false
+	var hide_tween := create_tween()
+	hide_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	hide_tween.tween_property(settings_panel, "modulate:a", 0.0, 0.14)
+	hide_tween.parallel().tween_property(settings_panel, "scale", Vector2(0.97, 0.97), 0.14)
+	hide_tween.tween_callback(func() -> void:
+		settings_panel.visible = false
+		settings_panel.modulate = Color(1, 1, 1, 1)
+		settings_panel.scale = Vector2.ONE
+	)
 
 
 func _on_replay_tutorial_pressed() -> void:

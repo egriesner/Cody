@@ -69,6 +69,7 @@ const MAX_ACTIVE_PROJECTILES := 36
 const MAX_ACTIVE_VFX_PARTICLES := 180
 const MAX_ACTIVE_SHOCKWAVES := 24
 const MAX_ACTIVE_DASH_AFTERIMAGES := 36
+const MAX_ACTIVE_HIT_MARKERS := 18
 
 var profile: Dictionary = {}
 var config: Dictionary = {}
@@ -300,6 +301,7 @@ var max_active_projectiles := MAX_ACTIVE_PROJECTILES
 var max_active_vfx_particles := MAX_ACTIVE_VFX_PARTICLES
 var max_active_shockwaves := MAX_ACTIVE_SHOCKWAVES
 var max_active_dash_afterimages := MAX_ACTIVE_DASH_AFTERIMAGES
+var max_active_hit_markers := MAX_ACTIVE_HIT_MARKERS
 var ambient_overlay_base_alpha := 0.08
 var concept_bg_texture: Texture2D
 var player_sprite_texture: Texture2D
@@ -324,9 +326,14 @@ var biome_music_streams: Array = []
 var sfx_streams: Dictionary = {}
 var music_player: AudioStreamPlayer
 var sfx_player: AudioStreamPlayer
+var sfx_players: Array[AudioStreamPlayer] = []
+var sfx_player_index := 0
+var target_music_volume_db := -8.0
+var audio_duck_lerp_speed := 6.0
 var vfx_particles: Array[Dictionary] = []
 var vfx_shockwaves: Array[Dictionary] = []
 var dash_afterimages: Array[Dictionary] = []
+var hit_markers: Array[Dictionary] = []
 var screen_shake_time_left := 0.0
 var screen_shake_intensity := 0.0
 var screen_shake_offset := Vector2.ZERO
@@ -443,9 +450,13 @@ func _setup_audio_players() -> void:
 	music_player.bus = "Master"
 	add_child(music_player)
 
-	sfx_player = AudioStreamPlayer.new()
-	sfx_player.bus = "Master"
-	add_child(sfx_player)
+	sfx_players.clear()
+	for i in 4:
+		var fx_player := AudioStreamPlayer.new()
+		fx_player.bus = "Master"
+		add_child(fx_player)
+		sfx_players.append(fx_player)
+	sfx_player = sfx_players[0] if not sfx_players.is_empty() else null
 
 	_apply_audio_mix()
 	_update_biome_music(true)
@@ -454,9 +465,11 @@ func _setup_audio_players() -> void:
 func _apply_audio_mix() -> void:
 	_apply_master_volume()
 	if music_player != null:
-		music_player.volume_db = -80.0 if music_volume <= 0.0001 else linear_to_db(clamp(music_volume, 0.0001, 1.0))
-	if sfx_player != null:
-		sfx_player.volume_db = -80.0 if sfx_volume <= 0.0001 else linear_to_db(clamp(sfx_volume, 0.0001, 1.0))
+		target_music_volume_db = -80.0 if music_volume <= 0.0001 else linear_to_db(clamp(music_volume, 0.0001, 1.0))
+		music_player.volume_db = target_music_volume_db
+	var sfx_db: float = -80.0 if sfx_volume <= 0.0001 else linear_to_db(clamp(sfx_volume, 0.0001, 1.0))
+	for fx_player in sfx_players:
+		fx_player.volume_db = sfx_db
 
 
 func _apply_master_volume() -> void:
@@ -470,13 +483,16 @@ func _apply_master_volume() -> void:
 
 
 func _play_sfx(name: String) -> void:
-	if sfx_player == null:
+	if sfx_players.is_empty():
 		return
 	var stream := sfx_streams.get(name, null) as AudioStream
 	if stream == null:
 		return
-	sfx_player.stream = stream
-	sfx_player.play()
+	sfx_player_index = (sfx_player_index + 1) % sfx_players.size()
+	var channel: AudioStreamPlayer = sfx_players[sfx_player_index]
+	channel.pitch_scale = randf_range(0.97, 1.04) if name == "attack" else 1.0
+	channel.stream = stream
+	channel.play()
 
 
 func _update_biome_music(force_restart: bool = false) -> void:
@@ -491,6 +507,24 @@ func _update_biome_music(force_restart: bool = false) -> void:
 		return
 	music_player.stream = desired_stream
 	music_player.play()
+
+
+func _update_audio_dynamics(delta: float) -> void:
+	if music_player == null:
+		return
+	var target_db: float = -80.0 if music_volume <= 0.0001 else linear_to_db(clamp(music_volume, 0.0001, 1.0))
+	var health_ratio: float = clamp(health / max(max_health, 0.001), 0.0, 1.0)
+	if boss_active:
+		target_db += 2.0
+	if health_ratio < 0.30:
+		target_db -= 2.2
+	elif health_ratio > 0.78:
+		target_db += 0.6
+	if game_ended:
+		target_db -= 1.8
+	target_music_volume_db = target_db
+	var step: float = clamp(delta * audio_duck_lerp_speed, 0.0, 1.0)
+	music_player.volume_db = lerpf(music_player.volume_db, target_music_volume_db, step)
 
 
 func _texture_for_enemy_type(enemy_type: String) -> Texture2D:
@@ -537,6 +571,8 @@ func _process(delta: float) -> void:
 		_update_vfx(delta)
 		_update_shockwaves(delta)
 		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
 		_update_screen_shake(delta)
 		_update_hud()
 		queue_redraw()
@@ -547,6 +583,8 @@ func _process(delta: float) -> void:
 		_update_vfx(delta)
 		_update_shockwaves(delta)
 		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
 		_update_screen_shake(delta)
 		_update_hud()
 		queue_redraw()
@@ -572,6 +610,8 @@ func _process(delta: float) -> void:
 	_update_vfx(delta)
 	_update_shockwaves(delta)
 	_update_dash_afterimages(delta)
+	_update_hit_markers(delta)
+	_update_audio_dynamics(delta)
 	_update_screen_shake(delta)
 	_update_hud()
 	queue_redraw()
@@ -668,6 +708,16 @@ func _draw() -> void:
 	else:
 		draw_circle(player_draw_position, 30, player_color)
 	draw_line(player_draw_position, player_draw_position + player_direction * 44, Color("#d8fbff"), 4.0)
+	var aim_vector: Vector2 = player_direction
+	if right_vector.length() > 0.20:
+		aim_vector = right_vector.normalized()
+	var reticle_center := player_draw_position + aim_vector * 78.0
+	var reticle_pulse: float = 0.85 + 0.15 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 160.0))
+	draw_arc(reticle_center, 12.0 + 2.0 * reticle_pulse, 0.0, TAU, 24, Color(0.78, 0.98, 1.0, 0.72), 2.2, true)
+	draw_line(reticle_center + Vector2(-16, 0), reticle_center + Vector2(-9, 0), Color(0.78, 0.98, 1.0, 0.72), 1.8)
+	draw_line(reticle_center + Vector2(16, 0), reticle_center + Vector2(9, 0), Color(0.78, 0.98, 1.0, 0.72), 1.8)
+	draw_line(reticle_center + Vector2(0, -16), reticle_center + Vector2(0, -9), Color(0.78, 0.98, 1.0, 0.72), 1.8)
+	draw_line(reticle_center + Vector2(0, 16), reticle_center + Vector2(0, 9), Color(0.78, 0.98, 1.0, 0.72), 1.8)
 
 	for enemy in active_enemies:
 		var enemy_position: Vector2 = enemy.get("position", Vector2.ZERO)
@@ -723,6 +773,17 @@ func _draw() -> void:
 		var particle_size: float = float(particle.get("size", 4.0))
 		var fade: float = clamp(particle_ttl / particle_total_ttl, 0.0, 1.0)
 		draw_circle(particle_pos, particle_size * fade, Color(particle_color.r, particle_color.g, particle_color.b, particle_color.a * fade))
+	var marker_font: Font = ThemeDB.fallback_font
+	var marker_size: int = 22
+	for marker in hit_markers:
+		var marker_pos: Vector2 = marker.get("position", Vector2.ZERO) + world_offset
+		var marker_text: String = String(marker.get("text", ""))
+		var marker_color: Color = marker.get("color", Color(1, 1, 1, 1))
+		var marker_ttl: float = float(marker.get("ttl", 0.0))
+		var marker_total_ttl: float = max(0.001, float(marker.get("total_ttl", 0.001)))
+		var marker_alpha: float = float(clamp(marker_ttl / marker_total_ttl, 0.0, 1.0))
+		draw_string(marker_font, marker_pos + Vector2(-1, -1), marker_text, HORIZONTAL_ALIGNMENT_LEFT, -1, marker_size, Color(0.03, 0.05, 0.12, marker_alpha * 0.92))
+		draw_string(marker_font, marker_pos, marker_text, HORIZONTAL_ALIGNMENT_LEFT, -1, marker_size, Color(marker_color.r, marker_color.g, marker_color.b, marker_alpha))
 
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
@@ -1763,6 +1824,40 @@ func _update_dash_afterimages(delta: float) -> void:
 			dash_afterimages.remove_at(index)
 
 
+func _spawn_hit_marker(position: Vector2, text: String, color: Color, ttl: float = 0.46, rise_speed: float = 54.0) -> void:
+	if hit_markers.size() >= max_active_hit_markers:
+		hit_markers.remove_at(0)
+	hit_markers.append({
+		"position": position,
+		"text": text,
+		"color": color,
+		"ttl": ttl,
+		"total_ttl": ttl,
+		"rise_speed": rise_speed
+	})
+
+
+func _update_hit_markers(delta: float) -> void:
+	if hit_markers.is_empty():
+		return
+	var to_remove: Array[int] = []
+	for i in hit_markers.size():
+		var marker: Dictionary = hit_markers[i]
+		var ttl: float = float(marker.get("ttl", 0.0)) - delta
+		var pos: Vector2 = marker.get("position", Vector2.ZERO)
+		var rise: float = float(marker.get("rise_speed", 54.0))
+		pos.y -= rise * delta
+		marker["position"] = pos
+		marker["ttl"] = ttl
+		hit_markers[i] = marker
+		if ttl <= 0.0:
+			to_remove.append(i)
+	if not to_remove.is_empty():
+		to_remove.reverse()
+		for index in to_remove:
+			hit_markers.remove_at(index)
+
+
 func _trigger_screen_shake(duration: float, intensity: float) -> void:
 	screen_shake_time_left = max(screen_shake_time_left, duration)
 	screen_shake_intensity = max(screen_shake_intensity, intensity)
@@ -1857,6 +1952,7 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 		damage *= critical_hit_damage_multiplier
 		_spawn_vfx_burst(player_position + attack_dir * 42.0, Color(1.0, 0.95, 0.42, 0.96), 6, 210.0, 0.25, 7.0)
 		_spawn_shockwave(player_position + attack_dir * 28.0, Color(1.0, 0.88, 0.40, 0.84), 14.0, 96.0, 0.22, 2.8)
+		_spawn_hit_marker(player_position + attack_dir * 66.0, "CRIT!", Color(1.0, 0.95, 0.40, 1.0), 0.48, 58.0)
 
 	var kills_hit := _damage_enemies_arc(player_position, attack_dir, range, 0.88, damage)
 	var boss_hit := _damage_boss_from_attack(attack_dir, damage * 0.9, range + 40.0)
@@ -1865,8 +1961,11 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 			status_label.text = "CRITICAL strike landed! (%s)" % source
 		else:
 			status_label.text = "Direct hits landed. (%s)" % source
+		if kills_hit > 0:
+			_spawn_hit_marker(player_position + attack_dir * 78.0, "+%d" % kills_hit, Color(0.82, 1.0, 0.66, 1.0), 0.42, 50.0)
 	else:
 		status_label.text = "Critical shot missed. (%s)" % source if is_critical else "Shots fired. (%s)" % source
+		_spawn_hit_marker(player_position + attack_dir * 66.0, "MISS", Color(0.74, 0.9, 1.0, 0.90), 0.36, 42.0)
 
 
 func _damage_boss_from_attack(direction: Vector2, damage: float, range: float) -> bool:
@@ -1879,6 +1978,8 @@ func _damage_boss_from_attack(direction: Vector2, damage: float, range: float) -
 	if to_boss.normalized().dot(direction.normalized()) < 0.72:
 		return false
 	boss["hp"] = float(boss.get("hp", 1.0)) - damage
+	var hit_position := boss_pos - direction.normalized() * 36.0
+	_spawn_hit_marker(hit_position, "BOSS -%d" % int(round(damage)), Color(1.0, 0.72, 0.84, 1.0), 0.46, 52.0)
 	if float(boss.get("hp", 0.0)) <= 0.0:
 		_on_boss_defeated()
 	return true
@@ -2039,6 +2140,7 @@ func _start_next_wave() -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	hit_markers.clear()
 	var base_spawn := wave_base_enemies + wave_number * wave_enemy_growth
 	wave_spawn_remaining = maxi(1, int(round(float(base_spawn) * enemy_spawn_multiplier)))
 	wave_spawn_tick = 0.15
@@ -2161,6 +2263,7 @@ func _update_enemy_projectiles(delta: float) -> void:
 			projectile["near_miss_emitted"] = true
 			enemy_projectiles[i] = projectile
 			_spawn_vfx_burst(player_position, Color(0.66, 1.0, 0.92, 0.82), 3, 110.0, 0.14, 4.2)
+			_spawn_hit_marker(player_position + Vector2(0, -42), "WHIFF", Color(0.70, 1.0, 0.94, 0.86), 0.28, 36.0)
 			if performance_mode != "performance":
 				_trigger_screen_shake(0.05, 2.6)
 		if distance_to_player <= 34.0:
@@ -2212,6 +2315,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	_play_sfx("hit")
 	_spawn_vfx_burst(player_position, Color(1.0, 0.52, 0.65, 0.95), 7, 200.0, 0.26, 6.0)
 	_spawn_shockwave(player_position, Color(1.0, 0.46, 0.62, 0.84), 12.0, 104.0, 0.22, 3.2)
+	_spawn_hit_marker(player_position + Vector2(-30, -46), "-%d" % int(round(amount)), Color(1.0, 0.46, 0.62, 1.0), 0.48, 56.0)
 	_trigger_screen_shake(0.14, 9.6)
 	status_label.text = "Hit by %s: -%.0f HP" % [source, amount]
 	if health > 0.0:
@@ -2230,6 +2334,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	hit_markers.clear()
 	wave_active = false
 	wave_wait_tick = 2.5
 	boss_active = false
@@ -2248,6 +2353,7 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 	var enemy_pos := enemy.get("position", player_position) as Vector2
 	_spawn_vfx_burst(enemy_pos, Color(0.78, 0.68, 1.0, 0.92), 8, 180.0, 0.30, 6.0)
 	_spawn_shockwave(enemy_pos, Color(0.78, 0.68, 1.0, 0.72), 10.0, 70.0, 0.20, 2.2)
+	_spawn_hit_marker(enemy_pos + Vector2(-24, -32), "DOWN", Color(0.86, 0.94, 1.0, 1.0), 0.44, 48.0)
 	if enemy_type == "brute":
 		_trigger_screen_shake(0.10, 5.2)
 	var current := int(bestiary_entries.get(enemy_type, 0))
@@ -2448,6 +2554,7 @@ func _enter_boss_phase() -> void:
 	active_enemies.clear()
 	enemy_projectiles.clear()
 	vfx_particles.clear()
+	hit_markers.clear()
 	boss = {
 		"name": "Overlord Vex",
 		"position": Vector2(viewport_size.x * 0.72, viewport_size.y * 0.55),
@@ -2500,6 +2607,7 @@ func _on_boss_defeated() -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	hit_markers.clear()
 	boss_shockwave_telegraph_armed = false
 	_spawn_shockwave(player_position, Color(0.76, 0.98, 1.0, 0.94), 30.0, 320.0, 0.52, 5.8)
 	_trigger_screen_shake(0.28, 14.0)
@@ -2615,6 +2723,7 @@ func _end_run(victory: bool, reason: String) -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	hit_markers.clear()
 	boss_shockwave_telegraph_armed = false
 	screen_shake_time_left = 0.0
 	screen_shake_intensity = 0.0
@@ -2747,6 +2856,12 @@ func _update_hud() -> void:
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
 	combo_label.text = "Combo x%.2f (%d)" % [combo_multiplier, combo_streak] if combo_streak > 1 else "Combo x1.00"
+	if combo_multiplier >= 1.8:
+		combo_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.64))
+	elif combo_multiplier >= 1.3:
+		combo_label.add_theme_color_override("font_color", Color(0.94, 1.0, 0.80))
+	else:
+		combo_label.add_theme_color_override("font_color", Color(0.95, 1.0, 0.82))
 	if dash_time_left > 0.0:
 		dash_label.text = "Dash: ACTIVE"
 		dash_button.text = "DASHING"
@@ -2759,10 +2874,15 @@ func _update_hud() -> void:
 	var active_hotbar_item := String(hotbar_items[selected_hotbar_index].get("label", "Item"))
 	hotbar_title.text = "Hotbar - %s" % active_hotbar_item
 	var ui_pulse := 0.88 + 0.12 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 300.0))
-	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95, 1.0, 1.0)
-	rhino_button.modulate = Color(0.92, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
-	scavenge_button.modulate = Color(0.90, 0.96, 0.98 + 0.02 * ui_pulse, 1.0)
+	var combo_glow: float = clamp((combo_multiplier - 1.0) / 1.4, 0.0, 1.0)
+	action_button.modulate = Color(0.85 + 0.15 * ui_pulse, 0.95 + 0.05 * combo_glow, 1.0, 1.0)
+	rhino_button.modulate = Color(0.92 + 0.04 * combo_glow, 0.80 + 0.20 * ui_pulse, 1.0, 1.0)
+	scavenge_button.modulate = Color(0.90, 0.96 + 0.04 * combo_glow, 0.98 + 0.02 * ui_pulse, 1.0)
 	dash_button.modulate = Color(0.94, 0.94 + 0.06 * ui_pulse, 1.0, 1.0)
+	travel_biome_button.modulate = Color(0.92, 0.94 + 0.04 * ui_pulse, 1.0, 1.0)
+	craft_button.modulate = Color(0.92 + 0.05 * combo_glow, 0.92, 1.0, 1.0)
+	gain_page_button.modulate = Color(0.92, 0.95, 1.0, 1.0)
+	pause_button.modulate = Color(0.88 + 0.06 * ui_pulse, 0.90, 0.98, 1.0)
 	perf_metrics_label.visible = show_perf_hud
 	if show_perf_hud:
 		perf_metrics_label.text = "FPS:%d | Enemies:%d/%d | Projectiles:%d/%d | VFX:%d/%d | Rings:%d/%d | Trails:%d/%d" % [
@@ -2780,9 +2900,11 @@ func _update_hud() -> void:
 		]
 
 	for i in hotbar_buttons.size():
-		hotbar_buttons[i].modulate = Color(1, 1, 1, 1)
+		hotbar_buttons[i].modulate = Color(0.96, 0.96, 1.0, 1.0)
+		hotbar_buttons[i].scale = Vector2.ONE
 		if i == selected_hotbar_index:
 			hotbar_buttons[i].modulate = Color("#7ff5ff")
+			hotbar_buttons[i].scale = Vector2(1.05 + 0.02 * ui_pulse, 1.05 + 0.02 * ui_pulse)
 
 
 func _state_text(state: int) -> String:
