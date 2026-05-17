@@ -2353,7 +2353,7 @@ func _spawn_enemy() -> void:
 		hp *= 1.2
 		speed *= 1.12
 	var elite := false
-	var elite_chance := clamp(elite_spawn_chance_base + float(wave_number) * 0.008, 0.0, 0.42)
+	var elite_chance: float = float(clamp(elite_spawn_chance_base + float(wave_number) * 0.008, 0.0, 0.42))
 	if randf() < elite_chance:
 		elite = true
 		hp *= elite_health_multiplier
