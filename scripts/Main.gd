@@ -57,6 +57,11 @@ var intro_overlay: Control
 var intro_logo: TextureRect
 var intro_tween: Tween
 var intro_active := false
+var intro_mode := "none"
+var intro_started_msec := 0
+var intro_min_skip_delay_msec := 750
+var queued_runtime_launch := false
+var queued_runtime_use_continue := false
 
 
 func _ready() -> void:
@@ -505,9 +510,21 @@ func _build_intro_splash() -> void:
 
 
 func _play_intro_if_available() -> void:
+	_play_intro_sequence("boot")
+
+
+func _play_intro_sequence(mode: String) -> void:
 	if studio_splash_texture == null or intro_overlay == null:
+		if mode == "runtime" and queued_runtime_launch:
+			var use_continue_snapshot: bool = queued_runtime_use_continue
+			queued_runtime_launch = false
+			queued_runtime_use_continue = false
+			_launch_runtime_immediate(use_continue_snapshot)
+			return
 		_fade_menu_music_to(_menu_music_target_db(), 0.45)
 		return
+	intro_mode = mode
+	intro_started_msec = Time.get_ticks_msec()
 	intro_active = true
 	intro_overlay.visible = true
 	intro_overlay.modulate = Color(1, 1, 1, 0)
@@ -525,7 +542,7 @@ func _play_intro_if_available() -> void:
 	intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	intro_tween.tween_property(intro_overlay, "modulate:a", 1.0, 0.36)
 	intro_tween.parallel().tween_property(intro_logo, "scale", Vector2(1.0, 1.0), 0.54)
-	intro_tween.tween_interval(2.0)
+	intro_tween.tween_interval(1.2 if mode == "runtime" else 2.0)
 	intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	intro_tween.tween_property(intro_overlay, "modulate:a", 0.0, 0.42)
 	intro_tween.tween_callback(_finish_intro_splash)
@@ -533,6 +550,8 @@ func _play_intro_if_available() -> void:
 
 func _on_intro_gui_input(event: InputEvent) -> void:
 	if not intro_active:
+		return
+	if Time.get_ticks_msec() - intro_started_msec < intro_min_skip_delay_msec:
 		return
 	if event is InputEventScreenTouch and event.pressed:
 		_finish_intro_splash()
@@ -549,6 +568,14 @@ func _finish_intro_splash() -> void:
 		intro_tween = null
 	if intro_overlay != null:
 		intro_overlay.visible = false
+	if intro_mode == "runtime" and queued_runtime_launch:
+		var use_continue_snapshot: bool = queued_runtime_use_continue
+		queued_runtime_launch = false
+		queued_runtime_use_continue = false
+		intro_mode = "none"
+		_launch_runtime_immediate(use_continue_snapshot)
+		return
+	intro_mode = "none"
 	menu_panel.visible = true
 	settings_panel.visible = false
 	_fade_menu_music_to(_menu_music_target_db(), 0.45)
@@ -725,7 +752,13 @@ func _refresh_menu() -> void:
 		status_label.text = "Tutorial pending: first run will open guided onboarding."
 
 
-func _launch_runtime(use_continue_snapshot: bool) -> void:
+func _start_runtime_with_intro(use_continue_snapshot: bool) -> void:
+	queued_runtime_launch = true
+	queued_runtime_use_continue = use_continue_snapshot
+	_play_intro_sequence("runtime")
+
+
+func _launch_runtime_immediate(use_continue_snapshot: bool) -> void:
 	if active_runtime != null:
 		active_runtime.queue_free()
 
@@ -776,18 +809,18 @@ func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
 		TELEMETRY_SCRIPT.log_event("runtime_restart_requested", {
 			"prior_victory": victory
 		})
-		_launch_runtime(false)
+		_start_runtime_with_intro(false)
 
 
 func _on_new_run_pressed() -> void:
-	_launch_runtime(false)
+	_start_runtime_with_intro(false)
 
 
 func _on_continue_pressed() -> void:
 	if continue_button.disabled:
 		status_label.text = "No continue snapshot available."
 		return
-	_launch_runtime(true)
+	_start_runtime_with_intro(true)
 
 
 func _on_settings_pressed() -> void:
