@@ -56,3 +56,17 @@ Run from:
 - **Actions -> Web Browser Build -> Run workflow**
 
 Artifact contains the full `build/web` output plus a zipped bundle.
+
+## 6) Auto-deploy to GitHub Pages (recommended for phone testing)
+
+Workflow:
+
+- `.github/workflows/web-pages-deploy.yml`
+
+How to use:
+
+1. In your repo settings, set **Pages -> Build and deployment -> Source** to **GitHub Actions**.
+2. Run **Actions -> Web Pages Deploy -> Run workflow** (or push to `main`).
+3. Open the deployed Pages URL shown in the workflow deployment summary.
+
+This gives you a public URL you can open directly from your Android browser.

@@ -28,6 +28,7 @@ required_files=(
   ".github/workflows/android-smoke.yml"
   ".github/workflows/android-release-candidate.yml"
   ".github/workflows/web-build.yml"
+  ".github/workflows/web-pages-deploy.yml"
   "tools/smoke_check.sh"
   "tools/release_orchestrator.sh"
   "tools/build_web.sh"
@@ -96,6 +97,14 @@ rg -q "tools/release_orchestrator\\.sh" ".github/workflows/android-release-candi
 }
 rg -q "tools/build_web\\.sh" ".github/workflows/web-build.yml" || {
   echo "[preflight] web-build workflow missing build_web invocation" >&2
+  exit 1
+}
+rg -q "tools/build_web\\.sh" ".github/workflows/web-pages-deploy.yml" || {
+  echo "[preflight] web-pages-deploy workflow missing build_web invocation" >&2
+  exit 1
+}
+rg -q "actions/deploy-pages@v4" ".github/workflows/web-pages-deploy.yml" || {
+  echo "[preflight] web-pages-deploy workflow missing deploy-pages action" >&2
   exit 1
 }
 

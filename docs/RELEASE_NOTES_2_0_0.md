@@ -29,6 +29,7 @@ Developer: **Code Maxx Studios**
   - Dedicated CI smoke workflow (`.github/workflows/android-smoke.yml`)
   - Dedicated CI release-candidate artifact bundle workflow (`.github/workflows/android-release-candidate.yml`)
   - Dedicated browser build path (`./tools/build_web.sh`, `.github/workflows/web-build.yml`)
+  - GitHub Pages deploy workflow for instant mobile browser testing (`.github/workflows/web-pages-deploy.yml`)
 
 ## Build Artifacts (2.0)
 

@@ -48,6 +48,12 @@ If test devices block APK install, build and host the browser bundle:
 
 Then host `build/web` on static hosting and test via URL on the device browser.
 
+For GitHub-native hosting, run:
+
+- **Actions -> Web Pages Deploy -> Run workflow**
+
+Then use the Pages deployment URL on the device.
+
 ## 3) Production signing + Play publish (CI path)
 
 Set repository variable:

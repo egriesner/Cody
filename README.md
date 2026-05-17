@@ -95,6 +95,7 @@ Runtime telemetry diagnostics are written to `user://telemetry_events.jsonl` and
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
 GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.
 GitHub Actions now auto-builds browser bundles via `.github/workflows/web-build.yml`.
+GitHub Actions can auto-deploy browser builds to GitHub Pages via `.github/workflows/web-pages-deploy.yml`.
 GitHub Actions now runs fast smoke gates via `.github/workflows/android-smoke.yml`.
 GitHub Actions release-candidate bundle is available via `.github/workflows/android-release-candidate.yml`.
 GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.
