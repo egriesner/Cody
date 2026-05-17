@@ -643,7 +643,7 @@ func _draw() -> void:
 		var particle_ttl: float = particle.get("ttl", 0.0)
 		var particle_total_ttl: float = max(0.001, float(particle.get("total_ttl", 0.001)))
 		var particle_size: float = particle.get("size", 4.0)
-		var fade := clamp(particle_ttl / particle_total_ttl, 0.0, 1.0)
+		var fade: float = clamp(particle_ttl / particle_total_ttl, 0.0, 1.0)
 		draw_circle(particle_pos, particle_size * fade, Color(particle_color.r, particle_color.g, particle_color.b, particle_color.a * fade))
 
 	if boss_active:
