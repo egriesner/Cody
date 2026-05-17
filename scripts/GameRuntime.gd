@@ -372,6 +372,7 @@ var telemetry_heartbeat_tick := 0.0
 var mutator_intensity_multiplier := 1.0
 var elite_spawn_chance_multiplier := 1.0
 var rift_energy_gain_multiplier := 1.0
+var web_tutorial_auto_skipped := false
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -392,6 +393,11 @@ func _ready() -> void:
 	player_position = get_viewport_rect().size * 0.5
 	status_label.text = "Run started. Track, craft, survive."
 	_apply_hotbar_context_rules()
+	if OS.has_feature("web") and tutorial_enabled and not bool(profile.get("tutorial_completed", false)):
+		tutorial_enabled = false
+		tutorial_completed_this_session = true
+		web_tutorial_auto_skipped = true
+		status_label.text = "Web quickstart enabled: tutorial skipped."
 	TELEMETRY_SCRIPT.log_event("runtime_ready", {
 		"difficulty": difficulty_name,
 		"performance_mode": performance_mode,
@@ -1091,6 +1097,8 @@ func _apply_profile_bonuses() -> void:
 	music_volume = float(settings.get("music_volume", 0.85))
 	sfx_volume = float(settings.get("sfx_volume", 0.90))
 	performance_mode = String(settings.get("performance_mode", "balanced"))
+	if OS.has_feature("web"):
+		performance_mode = "balanced" if performance_mode == "performance" else "quality"
 	show_perf_hud = bool(settings.get("show_perf_hud", false))
 	enemy_health_multiplier = 1.0
 	enemy_damage_multiplier = 1.0
@@ -1659,21 +1667,21 @@ func _build_hud() -> void:
 	action_button.position = Vector2(1570, 920)
 	action_button.size = Vector2(280, 120)
 	action_button.text = "ATTACK"
-	action_button.pressed.connect(_on_action_pressed)
+	action_button.button_down.connect(_on_action_pressed)
 	hud_root.add_child(action_button)
 
 	dash_button = Button.new()
 	dash_button.position = Vector2(1370, 944)
 	dash_button.size = Vector2(180, 84)
 	dash_button.text = "DASH"
-	dash_button.pressed.connect(_on_dash_pressed)
+	dash_button.button_down.connect(_on_dash_pressed)
 	hud_root.add_child(dash_button)
 
 	rift_burst_button = Button.new()
 	rift_burst_button.position = Vector2(1160, 944)
 	rift_burst_button.size = Vector2(190, 84)
 	rift_burst_button.text = "RIFT BURST"
-	rift_burst_button.pressed.connect(_on_rift_burst_pressed)
+	rift_burst_button.button_down.connect(_on_rift_burst_pressed)
 	hud_root.add_child(rift_burst_button)
 
 	left_stick_base = Panel.new()
@@ -3288,6 +3296,8 @@ func _on_hotbar_selected(index: int) -> void:
 func _on_action_pressed() -> void:
 	if game_ended:
 		return
+	if is_soft_paused:
+		return
 	if input_mode == InputMode.EAT_MODE:
 		_consume_food()
 	elif input_mode == InputMode.RHINO_BOOST_MODE:
@@ -3299,6 +3309,8 @@ func _on_action_pressed() -> void:
 
 func _on_dash_pressed() -> void:
 	if game_ended:
+		return
+	if is_soft_paused:
 		return
 	if dash_cooldown_remaining > 0.0:
 		return
@@ -3324,6 +3336,8 @@ func _on_dash_pressed() -> void:
 
 func _on_rift_burst_pressed() -> void:
 	if game_ended:
+		return
+	if is_soft_paused:
 		return
 	if rift_burst_cooldown > 0.0:
 		return
