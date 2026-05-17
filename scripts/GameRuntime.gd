@@ -394,6 +394,7 @@ var damage_free_time := 99.0
 var power_cubes_collected := 0
 var power_cube_damage_bonus := 0.08
 var power_cube_health_bonus := 18.0
+var life_reset_pending := false
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -641,6 +642,8 @@ func _process(delta: float) -> void:
 			"run_performance": performance_mode,
 			"boss_active": boss_active
 		})
+	if life_reset_pending:
+		_perform_life_reset()
 
 	if game_ended:
 		_update_feedback_overlay(delta)
@@ -3209,7 +3212,7 @@ func _update_enemy_projectiles(delta: float) -> void:
 				_trigger_screen_shake(0.05, 2.6)
 		if distance_to_player <= 34.0:
 			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier * mutator_projectile_damage_multiplier, "Spitter acid bolt")
-			if game_ended:
+			if game_ended or life_reset_pending:
 				return
 			to_remove.append(i)
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
@@ -3229,7 +3232,7 @@ func _update_enemy_contacts(delta: float) -> void:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
 		if boss_position.distance_to(player_position) <= 72.0:
 			_apply_player_damage(boss_contact_damage * enemy_damage_multiplier, "Overlord slam")
-			if game_ended:
+			if game_ended or life_reset_pending:
 				return
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 			return
@@ -3244,13 +3247,15 @@ func _update_enemy_contacts(delta: float) -> void:
 		if bool(enemy.get("elite", false)):
 			damage *= elite_damage_multiplier
 		_apply_player_damage(damage * enemy_damage_multiplier, "Vexian " + String(enemy.get("type", "drone")))
-		if game_ended:
+		if game_ended or life_reset_pending:
 			return
 		enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 		break
 
 
 func _apply_player_damage(amount: float, source: String) -> void:
+	if game_ended or life_reset_pending:
+		return
 	if dash_time_left > 0.0:
 		status_label.text = "Dash evaded %s." % source
 		_spawn_vfx_burst(player_position, Color(0.84, 0.96, 1.0, 0.92), 5, 180.0, 0.24, 6.0)
@@ -3278,6 +3283,11 @@ func _apply_player_damage(amount: float, source: String) -> void:
 		_end_run(false, "Cody was overrun by Vex forces.")
 		return
 
+	life_reset_pending = true
+
+
+func _perform_life_reset() -> void:
+	life_reset_pending = false
 	health = max_health
 	hunger = max_hunger * 0.55
 	attack_ammo = float(attack_ammo_max)
@@ -3293,6 +3303,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	wave_wait_tick = 2.5
 	boss_active = false
 	boss_shockwave_telegraph_armed = false
+	enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 	status_label.text = "Life lost. %d lives remaining." % player_lives
 
 
@@ -3571,6 +3582,8 @@ func _update_boss_system(delta: float) -> void:
 		_trigger_screen_shake(0.12, 8.4)
 		if boss_position.distance_to(player_position) < boss_shockwave_radius:
 			_apply_player_damage(boss_shockwave_damage * enemy_damage_multiplier, "Overlord shockwave")
+			if game_ended or life_reset_pending:
+				return
 		else:
 			_spawn_enemy()
 			_spawn_enemy()

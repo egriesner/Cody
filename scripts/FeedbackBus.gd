@@ -34,7 +34,8 @@ func configure_from_profile(settings: Dictionary) -> void:
 func emit_feedback(event_name: String) -> void:
 	var entry: Dictionary = event_map.get(event_name, {"flash_color": Color(1, 1, 1, 0.1), "flash_duration": 0.08, "vibrate_ms": 0})
 	var vibrate_ms := int(entry.get("vibrate_ms", 0))
-	if vibration_enabled and vibrate_ms > 0:
+	var can_vibrate := OS.has_feature("android") or OS.has_feature("ios")
+	if vibration_enabled and vibrate_ms > 0 and can_vibrate:
 		Input.vibrate_handheld(vibrate_ms)
 
 	if show_hit_flash:
