@@ -1,6 +1,6 @@
 # RIFT: The Bestiary Protocol - Release Notes (0.2.0)
 
-Developer: **Code Max Studios**
+Developer: **Code Maxx Studios**
 
 ## Highlights
 

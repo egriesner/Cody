@@ -1135,7 +1135,7 @@ func _build_hud() -> void:
 	hud_root.add_child(bottom_hud_panel)
 
 	var title := Label.new()
-	title.text = "RIFT: The Bestiary Protocol - Code Max Studios"
+	title.text = "RIFT: The Bestiary Protocol - Code Maxx Studios"
 	title.position = Vector2(20, 12)
 	title.add_theme_font_size_override("font_size", 24)
 	title.add_theme_color_override("font_color", Color(0.80, 0.98, 1.0))

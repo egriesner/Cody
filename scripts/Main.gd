@@ -3,6 +3,7 @@ extends Control
 const GAME_RUNTIME_SCRIPT := preload("res://scripts/GameRuntime.gd")
 const SAVE_MANAGER_SCRIPT := preload("res://scripts/SaveManager.gd")
 const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
+const STUDIO_SPLASH_PATH := "res://assets/branding/code_maxx_studios_intro.svg"
 const PANEL_TOP_PATH := "res://assets/artpack/ui/hud_top_panel.svg"
 const PANEL_BOTTOM_PATH := "res://assets/artpack/ui/hud_bottom_panel.svg"
 const BUTTON_PRIMARY_PATH := "res://assets/artpack/ui/button_primary.svg"
@@ -34,6 +35,11 @@ var panel_top_texture: Texture2D
 var panel_bottom_texture: Texture2D
 var button_primary_texture: Texture2D
 var button_secondary_texture: Texture2D
+var studio_splash_texture: Texture2D
+var intro_overlay: Control
+var intro_logo: TextureRect
+var intro_tween: Tween
+var intro_active := false
 
 
 func _ready() -> void:
@@ -41,7 +47,9 @@ func _ready() -> void:
 	_load_visual_assets()
 	_apply_master_volume_from_profile()
 	_build_menu_ui()
+	_build_intro_splash()
 	_refresh_menu()
+	_play_intro_if_available()
 
 
 func _load_profile() -> void:
@@ -54,6 +62,7 @@ func _save_profile() -> void:
 
 func _load_visual_assets() -> void:
 	concept_bg_texture = _load_texture_if_exists(CONCEPT_BG_PATH)
+	studio_splash_texture = _load_texture_if_exists(STUDIO_SPLASH_PATH)
 	panel_top_texture = _load_texture_if_exists(PANEL_TOP_PATH)
 	panel_bottom_texture = _load_texture_if_exists(PANEL_BOTTOM_PATH)
 	button_primary_texture = _load_texture_if_exists(BUTTON_PRIMARY_PATH)
@@ -107,7 +116,7 @@ func _build_menu_ui() -> void:
 	menu_panel.add_child(title_label)
 
 	subtitle_label = Label.new()
-	subtitle_label.text = "Open-world survival brawler by Code Max Studios"
+	subtitle_label.text = "Open-world survival brawler by Code Maxx Studios"
 	subtitle_label.position = Vector2(182, 92)
 	subtitle_label.add_theme_font_size_override("font_size", 20)
 	menu_panel.add_child(subtitle_label)
@@ -162,7 +171,7 @@ func _build_menu_ui() -> void:
 	var studio_label := Label.new()
 	studio_label.position = Vector2(62, 586)
 	studio_label.size = Vector2(860, 30)
-	studio_label.text = "Developer: Code Max Studios"
+	studio_label.text = "Developer: Code Maxx Studios"
 	menu_panel.add_child(studio_label)
 
 	_build_settings_panel()
@@ -300,6 +309,92 @@ func _build_settings_panel() -> void:
 	replay_tutorial_button.size = Vector2(276, 44)
 	replay_tutorial_button.pressed.connect(_on_replay_tutorial_pressed)
 	settings_panel.add_child(replay_tutorial_button)
+
+
+func _build_intro_splash() -> void:
+	intro_overlay = Control.new()
+	intro_overlay.set_anchors_preset(PRESET_FULL_RECT)
+	intro_overlay.visible = false
+	intro_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	intro_overlay.gui_input.connect(_on_intro_gui_input)
+	add_child(intro_overlay)
+
+	var splash_bg := ColorRect.new()
+	splash_bg.set_anchors_preset(PRESET_FULL_RECT)
+	splash_bg.color = Color(0.02, 0.05, 0.12, 0.97)
+	splash_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	intro_overlay.add_child(splash_bg)
+
+	intro_logo = TextureRect.new()
+	intro_logo.texture = studio_splash_texture
+	intro_logo.position = Vector2(520, 170)
+	intro_logo.size = Vector2(880, 560)
+	intro_logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	intro_logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	intro_logo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	intro_overlay.add_child(intro_logo)
+
+	var presents_label := Label.new()
+	presents_label.text = "Presents"
+	presents_label.position = Vector2(865, 84)
+	presents_label.add_theme_font_size_override("font_size", 34)
+	presents_label.add_theme_color_override("font_color", Color(0.76, 0.96, 1.0))
+	presents_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	intro_overlay.add_child(presents_label)
+
+	var continue_hint := Label.new()
+	continue_hint.text = "Tap to skip"
+	continue_hint.position = Vector2(858, 980)
+	continue_hint.add_theme_font_size_override("font_size", 20)
+	continue_hint.add_theme_color_override("font_color", Color(0.70, 0.85, 1.0, 0.9))
+	continue_hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	intro_overlay.add_child(continue_hint)
+
+
+func _play_intro_if_available() -> void:
+	if studio_splash_texture == null or intro_overlay == null:
+		return
+	intro_active = true
+	intro_overlay.visible = true
+	intro_overlay.modulate = Color(1, 1, 1, 0)
+	intro_logo.scale = Vector2(0.90, 0.90)
+	menu_panel.visible = false
+	settings_panel.visible = false
+	status_label.text = "Launching..."
+
+	if intro_tween != null:
+		intro_tween.kill()
+	intro_tween = create_tween()
+	intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	intro_tween.tween_property(intro_overlay, "modulate:a", 1.0, 0.36)
+	intro_tween.parallel().tween_property(intro_logo, "scale", Vector2(1.0, 1.0), 0.54)
+	intro_tween.tween_interval(2.0)
+	intro_tween.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	intro_tween.tween_property(intro_overlay, "modulate:a", 0.0, 0.42)
+	intro_tween.tween_callback(_finish_intro_splash)
+
+
+func _on_intro_gui_input(event: InputEvent) -> void:
+	if not intro_active:
+		return
+	if event is InputEventScreenTouch and event.pressed:
+		_finish_intro_splash()
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		_finish_intro_splash()
+
+
+func _finish_intro_splash() -> void:
+	if not intro_active:
+		return
+	intro_active = false
+	if intro_tween != null:
+		intro_tween.kill()
+		intro_tween = null
+	if intro_overlay != null:
+		intro_overlay.visible = false
+	menu_panel.visible = true
+	settings_panel.visible = false
+	_refresh_menu()
 
 
 func _make_stylebox(bg: Color, border: Color, border_size: int = 2, radius: int = 12) -> StyleBoxFlat:

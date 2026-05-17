@@ -6,7 +6,7 @@ const SAVE_PATH := "user://rift_profile.json"
 
 static func default_profile() -> Dictionary:
 	return {
-		"studio": "Code Max Studios",
+		"studio": "Code Maxx Studios",
 		"profile_version": 1,
 		"player_name": "Cody Max",
 		"tutorial_completed": false,

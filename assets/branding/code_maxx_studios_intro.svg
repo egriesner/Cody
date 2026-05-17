@@ -1,0 +1,56 @@
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#050a17"/>
+      <stop offset="100%" stop-color="#120a26"/>
+    </linearGradient>
+    <radialGradient id="core" cx="50%" cy="45%" r="46%">
+      <stop offset="0%" stop-color="#22e3ff" stop-opacity="0.82"/>
+      <stop offset="60%" stop-color="#8f4bff" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#98f6ff"/>
+      <stop offset="45%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#c7a8ff"/>
+    </linearGradient>
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="7" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1920" height="1080" fill="url(#core)"/>
+
+  <g opacity="0.24" stroke="#46e6ff" stroke-width="2" fill="none">
+    <polygon points="960,150 1170,270 1170,510 960,630 750,510 750,270"/>
+    <polygon points="960,210 1118,300 1118,480 960,570 802,480 802,300"/>
+    <circle cx="960" cy="390" r="184"/>
+    <circle cx="960" cy="390" r="236" opacity="0.42"/>
+  </g>
+
+  <g opacity="0.35">
+    <path d="M744 455 L883 310 L932 360 L794 505 Z" fill="#2de9ff" filter="url(#softGlow)"/>
+    <path d="M1176 455 L1037 310 L988 360 L1126 505 Z" fill="#a46bff" filter="url(#softGlow)"/>
+    <path d="M812 530 L960 372 L1108 530 L1032 606 L960 530 L888 606 Z" fill="#ffffff" fill-opacity="0.83" filter="url(#softGlow)"/>
+  </g>
+
+  <g opacity="0.14" stroke="#7cecff" stroke-width="1.5">
+    <line x1="300" y1="860" x2="1620" y2="860"/>
+    <line x1="350" y1="890" x2="1570" y2="890"/>
+  </g>
+
+  <text x="960" y="770" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="122" font-weight="800" letter-spacing="9" fill="url(#title)">
+    CODE MAXX
+  </text>
+  <text x="960" y="848" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="54" font-weight="700" letter-spacing="13" fill="#d8f9ff">
+    STUDIOS
+  </text>
+  <text x="960" y="925" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="600" letter-spacing="4" fill="#83d8ff" opacity="0.86">
+    CRAFTING WORLDS OF ADVENTURE
+  </text>
+</svg>

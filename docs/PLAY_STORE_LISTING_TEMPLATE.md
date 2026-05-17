@@ -1,4 +1,4 @@
-# Play Store Listing Template (Code Max Studios)
+# Play Store Listing Template (Code Maxx Studios)
 
 Use this template when creating the Google Play listing for **RIFT: The Bestiary Protocol**.
 
@@ -36,7 +36,7 @@ In **RIFT: The Bestiary Protocol**, you explore dangerous biomes, scavenge resou
 - High-contrast and UI-scale accessibility settings
 - Short reward loops and quick retry pacing
 
-Developer: **Code Max Studios**
+Developer: **Code Maxx Studios**
 
 ## What’s New Template
 
@@ -52,6 +52,6 @@ Developer: **Code Max Studios**
 
 ## Contact Details
 
-- Developer name: Code Max Studios
+- Developer name: Code Maxx Studios
 - Support email: (set in Play Console)
 - Privacy policy URL: (required before production release)

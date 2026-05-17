@@ -1,4 +1,4 @@
-# Android Release Guide (Code Max Studios)
+# Android Release Guide (Code Maxx Studios)
 
 This guide covers how to share builds and publish to Google Play.
 
@@ -103,9 +103,9 @@ Before production store submission, verify:
 
 ## 8) Branding
 
-- Studio name in metadata: **Code Max Studios**
+- Studio name in metadata: **Code Maxx Studios**
 - Suggested publisher title in Play Console:
-  - `Code Max Studios`
+  - `Code Maxx Studios`
 
 ## 9) Balance and Tuning Entry Points
 

@@ -4,7 +4,7 @@
 
 Last updated: [DATE]
 
-Code Max Studios ("we", "our", "us") provides **RIFT: The Bestiary Protocol** (the "App").
+Code Maxx Studios ("we", "our", "us") provides **RIFT: The Bestiary Protocol** (the "App").
 
 ## Information We Collect
 
@@ -48,7 +48,7 @@ You can clear local app data by uninstalling the App or clearing its storage fro
 
 For support or privacy inquiries:
 
-- Developer: Code Max Studios
+- Developer: Code Maxx Studios
 - Email: [SUPPORT_EMAIL]
 
 ## Changes to This Policy

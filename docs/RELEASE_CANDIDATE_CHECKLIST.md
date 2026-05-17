@@ -1,4 +1,4 @@
-# Release Candidate Checklist (Code Max Studios)
+# Release Candidate Checklist (Code Maxx Studios)
 
 Use this checklist immediately before promoting a build to Google Play production.
 

@@ -2,7 +2,7 @@
 
 RIFT project assets and a runnable Godot starter game for Android tablet deployment.
 
-Developer/Studio: **Code Max Studios**
+Developer/Studio: **Code Maxx Studios**
 
 ## Project Layout
 
