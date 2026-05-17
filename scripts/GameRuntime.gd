@@ -678,10 +678,54 @@ func _process(delta: float) -> void:
 	_update_companion_logic(delta)
 	_update_wave_system(delta)
 	_update_boss_system(delta)
+	if game_ended:
+		_update_feedback_overlay(delta)
+		_update_vfx(delta)
+		_update_shockwaves(delta)
+		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
+		_update_screen_shake(delta)
+		_update_hud()
+		queue_redraw()
+		return
 	_update_enemy_projectiles(delta)
+	if game_ended:
+		_update_feedback_overlay(delta)
+		_update_vfx(delta)
+		_update_shockwaves(delta)
+		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
+		_update_screen_shake(delta)
+		_update_hud()
+		queue_redraw()
+		return
 	_update_passive_scavenge(delta)
 	_update_enemy_contacts(delta)
+	if game_ended:
+		_update_feedback_overlay(delta)
+		_update_vfx(delta)
+		_update_shockwaves(delta)
+		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
+		_update_screen_shake(delta)
+		_update_hud()
+		queue_redraw()
+		return
 	_check_run_completion()
+	if game_ended:
+		_update_feedback_overlay(delta)
+		_update_vfx(delta)
+		_update_shockwaves(delta)
+		_update_dash_afterimages(delta)
+		_update_hit_markers(delta)
+		_update_audio_dynamics(delta)
+		_update_screen_shake(delta)
+		_update_hud()
+		queue_redraw()
+		return
 	_update_checkpoint_emitter(delta)
 	_update_feedback_overlay(delta)
 	_update_vfx(delta)
@@ -3165,6 +3209,8 @@ func _update_enemy_projectiles(delta: float) -> void:
 				_trigger_screen_shake(0.05, 2.6)
 		if distance_to_player <= 34.0:
 			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier * mutator_projectile_damage_multiplier, "Spitter acid bolt")
+			if game_ended:
+				return
 			to_remove.append(i)
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 
@@ -3183,6 +3229,8 @@ func _update_enemy_contacts(delta: float) -> void:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
 		if boss_position.distance_to(player_position) <= 72.0:
 			_apply_player_damage(boss_contact_damage * enemy_damage_multiplier, "Overlord slam")
+			if game_ended:
+				return
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 			return
 
@@ -3196,6 +3244,8 @@ func _update_enemy_contacts(delta: float) -> void:
 		if bool(enemy.get("elite", false)):
 			damage *= elite_damage_multiplier
 		_apply_player_damage(damage * enemy_damage_multiplier, "Vexian " + String(enemy.get("type", "drone")))
+		if game_ended:
+			return
 		enemy_touch_damage_tick = enemy_contact_cooldown_seconds
 		break
 
