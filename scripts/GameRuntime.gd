@@ -98,6 +98,7 @@ var state_move_speed_multiplier := 1.0
 var loadout_move_speed_multiplier := 1.0
 var player_position := Vector2(960, 540)
 var player_direction := Vector2.RIGHT
+var last_attack_direction := Vector2.RIGHT
 
 var left_touch_id := INVALID_TOUCH_ID
 var right_touch_id := INVALID_TOUCH_ID
@@ -674,10 +675,16 @@ func _process(delta: float) -> void:
 func _draw() -> void:
 	var screen_size := get_viewport_rect().size
 	var world_offset := screen_shake_offset
+	var time_seconds: float = float(Time.get_ticks_msec()) / 1000.0
 	var bg_color := Color("#0b1022")
 	var pulse := 0.70 + 0.30 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 420.0))
+	var ambient_wave: float = 0.5 + 0.5 * sin(time_seconds * 0.36)
 	if high_contrast_mode:
 		bg_color = Color("#05070f")
+	var biome_palette: Dictionary = _biome_palette(current_biome_index)
+	var sky_color: Color = biome_palette.get("sky", Color(0.07, 0.16, 0.32, 0.20))
+	var fog_color: Color = biome_palette.get("fog", Color(0.22, 0.58, 0.80, 0.10))
+	var energy_color: Color = biome_palette.get("energy", Color(0.45, 0.88, 1.0, 0.20))
 
 	var biome_texture: Texture2D = null
 	if current_biome_index >= 0 and current_biome_index < biome_bg_textures.size():
@@ -694,6 +701,27 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(bg_color.r, bg_color.g, bg_color.b, 0.60))
 	else:
 		draw_rect(Rect2(Vector2.ZERO, screen_size), bg_color)
+	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(sky_color.r, sky_color.g, sky_color.b, 0.10 + 0.08 * ambient_wave))
+	if performance_mode != "performance":
+		for i in 26:
+			var fi := float(i)
+			var twinkle: float = 0.35 + 0.65 * (0.5 + 0.5 * sin(time_seconds * 2.8 + fi * 1.9))
+			var star_x: float = fposmod(fi * 96.0 + time_seconds * (8.0 + fi * 0.08), screen_size.x + 60.0) - 30.0
+			var star_y: float = fposmod(fi * 137.0 + sin(time_seconds * 0.85 + fi) * 48.0 + 140.0, screen_size.y - 160.0) + 72.0
+			draw_circle(Vector2(star_x, star_y), 1.3 + twinkle * 1.8, Color(0.72, 0.98, 1.0, 0.18 + 0.44 * twinkle))
+		for i in 6:
+			var fi := float(i)
+			var haze_center := Vector2(
+				screen_size.x * (0.12 + 0.13 * fi) + sin(time_seconds * (0.22 + fi * 0.01) + fi * 1.8) * 120.0,
+				screen_size.y * (0.34 + 0.07 * fi) + cos(time_seconds * (0.18 + fi * 0.02) + fi * 1.5) * 90.0
+			)
+			var haze_radius: float = 170.0 + fi * 44.0 + 16.0 * sin(time_seconds * 0.36 + fi * 1.2)
+			draw_circle(haze_center, haze_radius, Color(fog_color.r, fog_color.g, fog_color.b, 0.028 + 0.02 * ambient_wave))
+		var horizon_height: float = screen_size.y * 0.28
+		draw_rect(
+			Rect2(0.0, screen_size.y - horizon_height, screen_size.x, horizon_height),
+			Color(energy_color.r, energy_color.g, energy_color.b, 0.09 + 0.07 * ambient_wave)
+		)
 	var ambient_alpha := ambient_overlay_base_alpha
 	if performance_mode != "performance":
 		ambient_alpha += 0.04 * pulse
@@ -710,25 +738,30 @@ func _draw() -> void:
 		draw_rect(Rect2(screen_size.x - edge_size, 0, edge_size, screen_size.y), Color(0.95, 0.14, 0.24, edge_alpha))
 		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.50, 0.04, 0.10, low_health_intensity * 0.10))
 
-	# Fixed thumb guides make touch zones obvious on tablets.
+	var show_touch_guides := show_perf_hud or run_elapsed_seconds <= 14.0
 	var left_hint_center := Vector2(screen_size.x * 0.16, screen_size.y * 0.82)
 	var right_hint_center := Vector2(screen_size.x * 0.84, screen_size.y * 0.82)
-	if performance_mode != "performance":
-		draw_circle(left_hint_center, 66, Color(0.27, 0.9, 1.0, 0.12))
-		draw_circle(left_hint_center, 26, Color(0.27, 0.9, 1.0, 0.18))
-		draw_circle(right_hint_center, 74, Color(0.80, 0.55, 1.0, 0.12))
-		draw_circle(right_hint_center, 26, Color(0.80, 0.55, 1.0, 0.18))
+	if show_touch_guides and performance_mode != "performance":
+		draw_arc(left_hint_center, 68, 0.0, TAU, 42, Color(0.27, 0.9, 1.0, 0.16), 2.4, true)
+		draw_circle(left_hint_center, 28, Color(0.27, 0.9, 1.0, 0.10))
+		draw_arc(right_hint_center, 76, 0.0, TAU, 42, Color(0.80, 0.55, 1.0, 0.16), 2.4, true)
+		draw_circle(right_hint_center, 28, Color(0.80, 0.55, 1.0, 0.10))
 
-	var dead_zone_alpha := 0.08 if not high_contrast_mode else 0.20
-	draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(0.30, 0.76, 1.0, dead_zone_alpha))
-	draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(0.85, 0.50, 1.0, dead_zone_alpha))
-	if performance_mode != "performance":
+	var dead_zone_alpha := 0.025 if not high_contrast_mode else 0.12
+	if show_perf_hud:
+		draw_rect(Rect2(0, 0, left_dead_zone_px, screen_size.y), Color(0.30, 0.76, 1.0, dead_zone_alpha))
+		draw_rect(Rect2(screen_size.x - right_dead_zone_px, 0, right_dead_zone_px, screen_size.y), Color(0.85, 0.50, 1.0, dead_zone_alpha))
+	if show_perf_hud and performance_mode != "performance":
 		draw_rect(left_spawn_rect, Color(0.15, 0.8, 1.0, 0.06), true)
 		draw_rect(right_spawn_rect, Color(0.66, 0.42, 1.0, 0.06), true)
-	draw_rect(Rect2(0, 70, screen_size.x, 8), Color(0.26, 0.85, 1.0, 0.28))
+	draw_rect(Rect2(0, 70, screen_size.x, 6), Color(0.26, 0.85, 1.0, 0.22))
 
 	var player_color := Color("#76efff")
 	var player_draw_position := player_position + world_offset
+	var move_strength: float = clamp(left_vector.length(), 0.0, 1.0)
+	var player_bob: float = sin(time_seconds * (5.4 + move_strength * 4.2)) * (1.8 + 3.3 * move_strength)
+	var player_tilt: float = clamp(player_direction.x * 0.16 + sin(time_seconds * 6.2) * 0.02, -0.22, 0.22)
+	player_draw_position += Vector2(0.0, player_bob)
 	if player_state == PlayerState.EXHAUSTED:
 		player_color = Color("#ff8db1")
 	elif player_state == PlayerState.RHINO_CHARGE:
@@ -756,11 +789,25 @@ func _draw() -> void:
 			draw_texture_rect(player_sprite_texture, Rect2(ghost_pos - ghost_size * 0.5, ghost_size), false, Color(ghost_tint.r, ghost_tint.g, ghost_tint.b, ghost_alpha))
 		else:
 			draw_circle(ghost_pos, 26, Color(ghost_tint.r, ghost_tint.g, ghost_tint.b, ghost_alpha))
+	draw_circle(player_draw_position + Vector2(0.0, 28.0), 26.0, Color(0.0, 0.0, 0.0, 0.22))
 	if player_sprite_texture != null:
 		var player_size := Vector2(96, 96)
-		draw_texture_rect(player_sprite_texture, Rect2(player_draw_position - player_size * 0.5, player_size), false, player_color)
+		var pulse_scale: float = 1.0 + 0.028 * sin(time_seconds * 8.2)
+		var player_scale := Vector2(pulse_scale, 2.0 - pulse_scale)
+		draw_set_transform(player_draw_position, player_tilt, player_scale)
+		draw_texture_rect(player_sprite_texture, Rect2(-player_size * 0.5, player_size), false, player_color)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	else:
 		draw_circle(player_draw_position, 30, player_color)
+	if attack_cooldown > 0.0 and attack_cooldown_seconds > 0.001:
+		var slash_strength: float = clamp(attack_cooldown / attack_cooldown_seconds, 0.0, 1.0)
+		var slash_direction := last_attack_direction if last_attack_direction.length() > 0.2 else player_direction
+		var slash_angle: float = slash_direction.angle()
+		var slash_span: float = 0.52 + 0.42 * slash_strength
+		var slash_radius: float = 74.0 + 22.0 * slash_strength
+		var slash_alpha: float = 0.12 + 0.48 * slash_strength
+		draw_arc(player_draw_position, slash_radius, slash_angle - slash_span, slash_angle + slash_span, 38, Color(0.74, 0.96, 1.0, slash_alpha), 4.6, true)
+		draw_arc(player_draw_position, slash_radius + 11.0, slash_angle - slash_span * 0.75, slash_angle + slash_span * 0.75, 32, Color(0.70, 0.94, 1.0, slash_alpha * 0.58), 2.2, true)
 	draw_line(player_draw_position, player_draw_position + player_direction * 44, Color("#d8fbff"), 4.0)
 	var aim_vector: Vector2 = player_direction
 	if right_vector.length() > 0.20:
@@ -780,6 +827,11 @@ func _draw() -> void:
 		var enemy_max_hp: float = enemy.get("max_hp", 1.0)
 		var enemy_type: String = enemy.get("type", "drone")
 		var enemy_is_elite: bool = bool(enemy.get("elite", false))
+		var enemy_id: int = int(enemy.get("id", 0))
+		var enemy_phase: float = time_seconds * (3.4 if enemy_type == "brute" else 4.6) + float(enemy_id) * 0.73
+		var enemy_bob: float = sin(enemy_phase) * (2.0 if enemy_type == "brute" else 3.0)
+		var enemy_tilt: float = clamp(cos(enemy_phase * 0.9) * 0.09, -0.12, 0.12)
+		enemy_draw_position += Vector2(0.0, enemy_bob)
 		var enemy_color := Color("#bc7bff")
 		if enemy_type == "brute":
 			enemy_color = Color("#ff8f89")
@@ -787,6 +839,7 @@ func _draw() -> void:
 			enemy_color = Color("#8fffb4")
 		if enemy_is_elite:
 			enemy_color = Color(1.0, 0.90, 0.50, 1.0)
+		draw_circle(enemy_draw_position + Vector2(0.0, 18.0), 19.0, Color(0.0, 0.0, 0.0, 0.18))
 		var enemy_texture := _texture_for_enemy_type(enemy_type)
 		if enemy_texture != null:
 			var enemy_size := Vector2(50, 50)
@@ -794,24 +847,35 @@ func _draw() -> void:
 				enemy_size = Vector2(62, 62)
 			if enemy_is_elite:
 				enemy_size *= 1.18
-			draw_texture_rect(enemy_texture, Rect2(enemy_draw_position - enemy_size * 0.5, enemy_size), false, enemy_color)
+			var enemy_scale: float = 1.0 + 0.02 * sin(enemy_phase * 1.4)
+			draw_set_transform(enemy_draw_position, enemy_tilt, Vector2(enemy_scale, 2.0 - enemy_scale))
+			draw_texture_rect(enemy_texture, Rect2(-enemy_size * 0.5, enemy_size), false, enemy_color)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			var draw_radius := 20.0 if enemy_is_elite else 16.0
 			draw_circle(enemy_draw_position, draw_radius, enemy_color)
 		if enemy_is_elite:
-			draw_arc(enemy_draw_position, 36.0, 0.0, TAU, 28, Color(1.0, 0.92, 0.56, 0.82), 2.6, true)
-			draw_circle(enemy_draw_position + Vector2(0, -30), 4.0, Color(1.0, 0.92, 0.56, 0.85))
+			var elite_spin: float = time_seconds * 2.2 + float(enemy_id) * 0.2
+			draw_arc(enemy_draw_position, 36.0, elite_spin, elite_spin + TAU, 34, Color(1.0, 0.92, 0.56, 0.82), 2.6, true)
+			draw_circle(enemy_draw_position + Vector2(cos(elite_spin), sin(elite_spin)) * 30.0, 4.0, Color(1.0, 0.92, 0.56, 0.85))
 		draw_circle(enemy_draw_position, 28, Color(enemy_color.r, enemy_color.g, enemy_color.b, 0.09))
 		var hp_ratio: float = clamp(enemy_hp / max(enemy_max_hp, 0.001), 0.0, 1.0)
-		draw_rect(Rect2(enemy_draw_position.x - 17, enemy_draw_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 1))
+		draw_rect(Rect2(enemy_draw_position.x - 17, enemy_draw_position.y - 28, 34, 4), Color(0.08, 0.08, 0.2, 0.88))
 		draw_rect(Rect2(enemy_draw_position.x - 17, enemy_draw_position.y - 28, 34 * hp_ratio, 4), Color("#69f2b0"))
+		draw_rect(Rect2(enemy_draw_position.x - 17, enemy_draw_position.y - 30, 34 * hp_ratio, 1.2), Color(0.86, 1.0, 0.94, 0.82))
 
 	for projectile in enemy_projectiles:
 		var projectile_position: Vector2 = projectile.get("position", Vector2.ZERO)
 		var projectile_draw_position := projectile_position + world_offset
 		var projectile_velocity: Vector2 = projectile.get("velocity", Vector2.ZERO)
 		var tail := projectile_draw_position - projectile_velocity.normalized() * 18.0
-		draw_line(tail, projectile_draw_position, Color(0.46, 1.0, 0.88, 0.75), 4.0)
+		var projectile_glow: float = 0.5 + 0.5 * sin(time_seconds * 11.0 + projectile_draw_position.x * 0.01)
+		draw_line(tail, projectile_draw_position, Color(0.46, 1.0, 0.88, 0.68 + projectile_glow * 0.22), 4.2)
+		if performance_mode != "performance":
+			for i in 3:
+				var fi := float(i)
+				var trail_point := projectile_draw_position - projectile_velocity.normalized() * (9.0 + fi * 7.5)
+				draw_circle(trail_point, 5.4 - fi * 1.2, Color(0.58, 1.0, 0.90, 0.26 - fi * 0.06))
 		draw_circle(projectile_draw_position, 8.0, Color(0.58, 1.0, 0.90, 0.94))
 		draw_circle(projectile_draw_position, 16.0, Color(0.58, 1.0, 0.90, 0.18))
 
@@ -827,6 +891,8 @@ func _draw() -> void:
 		var ring_radius: float = float(lerpf(ring_start_radius, ring_end_radius, ring_progress))
 		var ring_alpha: float = float(clamp(ring_ttl / ring_total_ttl, 0.0, 1.0))
 		draw_arc(ring_pos, ring_radius, 0.0, TAU, 46, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * ring_alpha), ring_width, true)
+		if performance_mode == "quality":
+			draw_arc(ring_pos, ring_radius + ring_width * 0.9, 0.0, TAU, 38, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * ring_alpha * 0.32), ring_width * 0.6, true)
 
 	for particle in vfx_particles:
 		var particle_pos: Vector2 = particle.get("position", Vector2.ZERO) + world_offset
@@ -851,13 +917,21 @@ func _draw() -> void:
 	if boss_active:
 		var boss_position: Vector2 = boss.get("position", Vector2.ZERO)
 		var boss_draw_position := boss_position + world_offset
+		var boss_bob: float = sin(time_seconds * 2.9) * 4.2
+		boss_draw_position += Vector2(0.0, boss_bob)
+		draw_circle(boss_draw_position + Vector2(0.0, 44.0), 44.0, Color(0.0, 0.0, 0.0, 0.26))
 		if boss_sprite_texture != null:
 			var boss_size := Vector2(136, 136)
-			draw_texture_rect(boss_sprite_texture, Rect2(boss_draw_position - boss_size * 0.5, boss_size), false, Color("#ff6f95"))
+			var boss_scale: float = 1.0 + 0.03 * sin(time_seconds * 4.4)
+			draw_set_transform(boss_draw_position, sin(time_seconds * 1.9) * 0.03, Vector2(boss_scale, 2.0 - boss_scale))
+			draw_texture_rect(boss_sprite_texture, Rect2(-boss_size * 0.5, boss_size), false, Color("#ff6f95"))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			draw_circle(boss_draw_position, 46, Color("#ff6f95"))
 		draw_circle(boss_draw_position, 66, Color(0.9, 0.2, 0.4, 0.18))
 		draw_circle(boss_draw_position, 90, Color(0.9, 0.2, 0.4, 0.08 + 0.08 * pulse))
+		if performance_mode != "performance":
+			draw_circle(boss_draw_position, 114, Color(1.0, 0.46, 0.68, 0.04 + 0.05 * pulse))
 		if boss_shockwave_telegraph_armed:
 			var telegraph_ratio: float = clamp(boss_attack_tick / max(boss_shockwave_telegraph_seconds, 0.001), 0.0, 1.0)
 			var telegraph_alpha: float = 0.20 + (1.0 - telegraph_ratio) * 0.44
@@ -870,6 +944,40 @@ func _draw() -> void:
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60, 14), Color(0.07, 0.05, 0.12, 1))
 		draw_rect(Rect2(screen_size.x * 0.20, 86, screen_size.x * 0.60 * boss_ratio, 14), Color("#ff6f95"))
 		draw_rect(Rect2(screen_size.x * 0.20, 84, screen_size.x * 0.60 * pulse * boss_ratio, 2), Color(1.0, 0.84, 0.94, 0.86))
+	if performance_mode != "performance":
+		var edge_overlay_alpha: float = 0.08 if not high_contrast_mode else 0.14
+		var vignette_size: float = 130.0
+		draw_rect(Rect2(0, 0, screen_size.x, vignette_size), Color(0.0, 0.0, 0.0, edge_overlay_alpha))
+		draw_rect(Rect2(0, screen_size.y - vignette_size, screen_size.x, vignette_size), Color(0.0, 0.0, 0.0, edge_overlay_alpha))
+		draw_rect(Rect2(0, 0, vignette_size, screen_size.y), Color(0.0, 0.0, 0.0, edge_overlay_alpha * 0.82))
+		draw_rect(Rect2(screen_size.x - vignette_size, 0, vignette_size, screen_size.y), Color(0.0, 0.0, 0.0, edge_overlay_alpha * 0.82))
+
+
+func _biome_palette(index: int) -> Dictionary:
+	match index:
+		0:
+			return {
+				"sky": Color(0.07, 0.16, 0.30, 0.20),
+				"fog": Color(0.30, 0.61, 0.82, 0.12),
+				"energy": Color(0.52, 0.86, 1.0, 0.22)
+			}
+		1:
+			return {
+				"sky": Color(0.09, 0.13, 0.24, 0.20),
+				"fog": Color(0.46, 0.52, 0.90, 0.12),
+				"energy": Color(0.78, 0.72, 1.0, 0.22)
+			}
+		2:
+			return {
+				"sky": Color(0.12, 0.10, 0.20, 0.20),
+				"fog": Color(0.68, 0.42, 0.82, 0.12),
+				"energy": Color(1.0, 0.56, 0.76, 0.22)
+			}
+	return {
+		"sky": Color(0.08, 0.14, 0.28, 0.20),
+		"fog": Color(0.30, 0.55, 0.84, 0.12),
+		"energy": Color(0.66, 0.82, 1.0, 0.20)
+	}
 
 
 func _load_config() -> void:
@@ -2199,6 +2307,7 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 	feedback_bus.emit_feedback("attack")
 	_play_sfx("attack")
 	var attack_dir := facing if facing.length() > 0.2 else player_direction
+	last_attack_direction = attack_dir
 	_spawn_vfx_burst(player_position + attack_dir * 30.0, Color(0.70, 0.95, 1.0, 0.95), 4, 155.0, 0.20, 6.0)
 	_spawn_shockwave(player_position + attack_dir * 22.0, Color(0.66, 0.92, 1.0, 0.72), 12.0, 72.0, 0.20, 2.4)
 	_trigger_screen_shake(0.08, 4.2)
