@@ -25,7 +25,9 @@ Developer: **Code Maxx Studios**
 - Launch-readiness operations:
   - Runtime telemetry + unclean-shutdown diagnostics (`user://telemetry_events.jsonl`, `user://telemetry_state.json`)
   - New automated smoke gate (`./tools/smoke_check.sh`)
+  - One-command release candidate orchestrator (`./tools/release_orchestrator.sh`)
   - Dedicated CI smoke workflow (`.github/workflows/android-smoke.yml`)
+  - Dedicated CI release-candidate artifact bundle workflow (`.github/workflows/android-release-candidate.yml`)
 
 ## Build Artifacts (2.0)
 

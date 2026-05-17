@@ -2,18 +2,21 @@
 
 This handoff is the final step list for publishing `RIFT: The Bestiary Protocol` 2.0.0 to Google Play.
 
-## 1) Local preflight
+## 1) Local release candidate (recommended)
 
 Run:
 
 ```bash
-./tools/smoke_check.sh
-./tools/preflight_release_check.sh
+./tools/release_orchestrator.sh
 ```
 
-Expected result: all checks passed.
+Expected result:
 
-## 2) Build release artifacts
+- smoke/preflight pass
+- release APK/AAB built
+- checksums + release manifest generated under `build/`
+
+## 2) Build release artifacts (manual fallback)
 
 ```bash
 ./tools/build_apk.sh release
@@ -31,6 +34,7 @@ Artifacts:
 - Fill `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
 - Run/record `docs/QA_SMOKE_CHECKLIST_2_0.md`
 - Attach/sign off `docs/RELEASE_NOTES_2_0_0.md`
+- Keep `build/release-checksums-*.txt` and `build/release-manifest-*.json` with the QA report
 
 ## 4) Play Console prep (manual)
 
@@ -42,6 +46,12 @@ Artifacts:
 - Apply listing text from `docs/PLAY_STORE_LISTING_TEMPLATE.md`
 
 ## 5) CI publish path (recommended)
+
+For release-candidate artifact bundles:
+
+- **Actions -> Android Release Candidate Bundle -> Run workflow**
+
+For Play publishing:
 
 Required repository variable:
 

@@ -149,16 +149,17 @@ Use these project templates to speed submission preparation:
 - `docs/PRIVACY_POLICY_TEMPLATE.md`
 - `docs/RELEASE_CANDIDATE_CHECKLIST.md`
 - `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
+- `docs/QA_SMOKE_CHECKLIST_2_0.md`
+- `docs/PRODUCTION_LAUNCH_RUNBOOK_2_0.md`
 - `docs/RELEASE_NOTES_2_0_0.md`
 - `docs/PLAY_UPLOAD_HANDOFF.md`
 
-## 12) One-Command Smoke + Preflight Check
+## 12) One-Command Release Candidate
 
 Before creating a release build, run:
 
 ```bash
-./tools/smoke_check.sh
-./tools/preflight_release_check.sh
+./tools/release_orchestrator.sh
 ```
 
 This verifies:
@@ -168,3 +169,4 @@ This verifies:
 - workflow files required for APK/AAB/Play upload exist
 - package ID and Play workflow variable references
 - JSON config syntax validity
+- release APK/AAB build output + checksums + manifest generation

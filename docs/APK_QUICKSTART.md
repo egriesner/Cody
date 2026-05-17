@@ -79,8 +79,17 @@ This repo now includes `.github/workflows/android-apk.yml`.
   - **GitHub -> Actions -> Android APK CI -> latest run -> Artifacts**
 
 Smoke checks run independently via `.github/workflows/android-smoke.yml` on every push/PR.
+Release-candidate bundles are available via `.github/workflows/android-release-candidate.yml`.
 
-## 8) Permanent package links via GitHub Releases
+## 8) One-command release candidate bundle
+
+```bash
+./tools/release_orchestrator.sh
+```
+
+This runs smoke + preflight checks, builds release APK/AAB, and emits checksums + manifest files.
+
+## 9) Permanent package links via GitHub Releases
 
 This repo also includes `.github/workflows/android-apk-release.yml`.
 
@@ -95,7 +104,7 @@ Download permanent APK URLs from:
 > Note: CI currently signs with an auto-generated debug keystore for distribution testing.
 > For Play Store production signing, configure your release keystore/credentials in workflow secrets.
 
-## 9) Publish directly to Google Play from CI
+## 10) Publish directly to Google Play from CI
 
 Workflow: `.github/workflows/android-play-publish.yml`
 

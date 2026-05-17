@@ -85,12 +85,15 @@ Use `docs/PLAY_STORE_LISTING_TEMPLATE.md` and `docs/PRIVACY_POLICY_TEMPLATE.md` 
 Use `docs/RELEASE_CANDIDATE_CHECKLIST.md` to gate promotion to production.
 Use `docs/INTERNAL_TEST_REPORT_TEMPLATE.md` to log each internal/closed test cycle.
 Use `docs/QA_SMOKE_CHECKLIST_2_0.md` for the 2.0 automation + runtime smoke gate.
+Use `docs/PRODUCTION_LAUNCH_RUNBOOK_2_0.md` for final release execution steps.
 Use `docs/RELEASE_NOTES_2_0_0.md` and `docs/PLAY_UPLOAD_HANDOFF.md` for release communications and upload flow.
+Run `./tools/release_orchestrator.sh` for one-command release candidate generation.
 Run `./tools/smoke_check.sh` before cutting any release build.
 Run `./tools/preflight_release_check.sh` before promoting to external tracks.
 Runtime telemetry diagnostics are written to `user://telemetry_events.jsonl` and `user://telemetry_state.json`.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
 GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.
 GitHub Actions now runs fast smoke gates via `.github/workflows/android-smoke.yml`.
+GitHub Actions release-candidate bundle is available via `.github/workflows/android-release-candidate.yml`.
 GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.
 Play Store upload workflow scaffold is available at `.github/workflows/android-play-publish.yml`.
