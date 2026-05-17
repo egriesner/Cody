@@ -207,6 +207,12 @@ var spitter_projectile_damage := 8.0
 var attack_cooldown_seconds := 0.24
 var dash_speed_multiplier := 2.7
 var boss_shockwave_interval_seconds := 2.4
+var boss_shockwave_radius := 180.0
+var boss_shockwave_telegraph_seconds := 0.58
+var boss_shockwave_telegraph_armed := false
+var critical_hit_chance := 0.14
+var critical_hit_damage_multiplier := 1.55
+var projectile_near_miss_radius := 94.0
 var difficulty_name := "normal"
 var enemy_health_multiplier := 1.0
 var enemy_damage_multiplier := 1.0
@@ -598,6 +604,17 @@ func _draw() -> void:
 	if performance_mode != "performance":
 		ambient_alpha += 0.04 * pulse
 	draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.04, 0.18, 0.32, ambient_alpha))
+	var health_ratio: float = clamp(health / max(max_health, 0.001), 0.0, 1.0)
+	var low_health_intensity: float = clamp((0.36 - health_ratio) / 0.36, 0.0, 1.0)
+	if low_health_intensity > 0.0:
+		var danger_pulse: float = 0.58 + 0.42 * (0.5 + 0.5 * sin(Time.get_ticks_msec() / 120.0))
+		var edge_alpha: float = low_health_intensity * (0.14 + 0.20 * danger_pulse)
+		var edge_size: float = 100.0 + 90.0 * low_health_intensity
+		draw_rect(Rect2(0, 0, screen_size.x, edge_size), Color(0.95, 0.14, 0.24, edge_alpha))
+		draw_rect(Rect2(0, screen_size.y - edge_size, screen_size.x, edge_size), Color(0.95, 0.14, 0.24, edge_alpha))
+		draw_rect(Rect2(0, 0, edge_size, screen_size.y), Color(0.95, 0.14, 0.24, edge_alpha))
+		draw_rect(Rect2(screen_size.x - edge_size, 0, edge_size, screen_size.y), Color(0.95, 0.14, 0.24, edge_alpha))
+		draw_rect(Rect2(Vector2.ZERO, screen_size), Color(0.50, 0.04, 0.10, low_health_intensity * 0.10))
 
 	# Fixed thumb guides make touch zones obvious on tablets.
 	var left_hint_center := Vector2(screen_size.x * 0.16, screen_size.y * 0.82)
@@ -628,6 +645,12 @@ func _draw() -> void:
 		draw_circle(player_draw_position, 64, Color(0.86, 0.96, 1.0, 0.24))
 		draw_circle(player_draw_position, 84, Color(0.70, 0.88, 1.0, 0.16))
 	draw_circle(player_draw_position, 52, Color(0.34, 0.84, 1.0, 0.11 + 0.10 * pulse))
+	if combo_streak > 1:
+		var combo_strength: float = clamp((combo_multiplier - 1.0) / 1.4, 0.0, 1.0)
+		var aura_radius: float = 62.0 + combo_strength * 48.0 + 6.0 * pulse
+		var aura_alpha: float = 0.10 + 0.18 * combo_strength
+		draw_arc(player_draw_position, aura_radius, 0.0, TAU, 40, Color(0.92, 1.0, 0.74, aura_alpha), 2.8, true)
+		draw_circle(player_draw_position, aura_radius * 0.72, Color(0.88, 1.0, 0.72, aura_alpha * 0.26))
 	for ghost in dash_afterimages:
 		var ghost_pos: Vector2 = ghost.get("position", player_position) + world_offset
 		var ghost_ttl: float = float(ghost.get("ttl", 0.0))
@@ -711,6 +734,12 @@ func _draw() -> void:
 			draw_circle(boss_draw_position, 46, Color("#ff6f95"))
 		draw_circle(boss_draw_position, 66, Color(0.9, 0.2, 0.4, 0.18))
 		draw_circle(boss_draw_position, 90, Color(0.9, 0.2, 0.4, 0.08 + 0.08 * pulse))
+		if boss_shockwave_telegraph_armed:
+			var telegraph_ratio: float = clamp(boss_attack_tick / max(boss_shockwave_telegraph_seconds, 0.001), 0.0, 1.0)
+			var telegraph_alpha: float = 0.20 + (1.0 - telegraph_ratio) * 0.44
+			draw_arc(boss_draw_position, boss_shockwave_radius, 0.0, TAU, 56, Color(1.0, 0.38, 0.58, telegraph_alpha), 4.0, true)
+			if boss_position.distance_to(player_position) <= boss_shockwave_radius:
+				draw_circle(player_draw_position, 42.0, Color(1.0, 0.22, 0.34, 0.08 + 0.10 * (1.0 - telegraph_ratio)))
 		var boss_hp := float(boss.get("hp", 1.0))
 		var boss_max_hp := float(boss.get("max_hp", 1.0))
 		var boss_ratio: float = clamp(boss_hp / max(boss_max_hp, 0.001), 0.0, 1.0)
@@ -758,6 +787,8 @@ func _load_config() -> void:
 	boss_contact_damage = float(boss_config.get("contactDamage", boss_contact_damage))
 	boss_shockwave_damage = float(boss_config.get("shockwaveDamage", boss_shockwave_damage))
 	boss_shockwave_interval_seconds = float(boss_config.get("shockwaveIntervalSeconds", boss_shockwave_interval_seconds))
+	boss_shockwave_radius = float(boss_config.get("shockwaveRadius", boss_shockwave_radius))
+	boss_shockwave_telegraph_seconds = float(boss_config.get("shockwaveTelegraphSeconds", boss_shockwave_telegraph_seconds))
 
 	var combat_polish: Dictionary = config.get("combatPolish", {})
 	attack_cooldown_seconds = float(combat_polish.get("attackCooldownSeconds", attack_cooldown_seconds))
@@ -767,6 +798,9 @@ func _load_config() -> void:
 	combo_timeout_seconds = float(combat_polish.get("comboTimeoutSeconds", combo_timeout_seconds))
 	spitter_projectile_speed = float(combat_polish.get("spitterProjectileSpeed", spitter_projectile_speed))
 	spitter_projectile_damage = float(combat_polish.get("spitterProjectileDamage", spitter_projectile_damage))
+	critical_hit_chance = float(combat_polish.get("criticalHitChance", critical_hit_chance))
+	critical_hit_damage_multiplier = float(combat_polish.get("criticalHitDamageMultiplier", critical_hit_damage_multiplier))
+	projectile_near_miss_radius = float(combat_polish.get("projectileNearMissRadius", projectile_near_miss_radius))
 
 	var tutorial_config: Dictionary = config.get("tutorial", {})
 	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
@@ -1818,13 +1852,21 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 	if selected_tag == "heavy_weapon":
 		damage = 42.0
 		range = 260.0
+	var is_critical := randf() < critical_hit_chance
+	if is_critical:
+		damage *= critical_hit_damage_multiplier
+		_spawn_vfx_burst(player_position + attack_dir * 42.0, Color(1.0, 0.95, 0.42, 0.96), 6, 210.0, 0.25, 7.0)
+		_spawn_shockwave(player_position + attack_dir * 28.0, Color(1.0, 0.88, 0.40, 0.84), 14.0, 96.0, 0.22, 2.8)
 
 	var kills_hit := _damage_enemies_arc(player_position, attack_dir, range, 0.88, damage)
 	var boss_hit := _damage_boss_from_attack(attack_dir, damage * 0.9, range + 40.0)
 	if kills_hit > 0 or boss_hit:
-		status_label.text = "Direct hits landed. (%s)" % source
+		if is_critical:
+			status_label.text = "CRITICAL strike landed! (%s)" % source
+		else:
+			status_label.text = "Direct hits landed. (%s)" % source
 	else:
-		status_label.text = "Shots fired. (%s)" % source
+		status_label.text = "Critical shot missed. (%s)" % source if is_critical else "Shots fired. (%s)" % source
 
 
 func _damage_boss_from_attack(direction: Vector2, damage: float, range: float) -> bool:
@@ -1992,6 +2034,7 @@ func _update_wave_system(delta: float) -> void:
 func _start_next_wave() -> void:
 	wave_number += 1
 	wave_active = true
+	boss_shockwave_telegraph_armed = false
 	enemy_projectiles.clear()
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
@@ -2031,6 +2074,15 @@ func _spawn_enemy() -> void:
 		"max_hp": hp,
 		"speed": speed
 	})
+	var spawn_color := Color(0.72, 0.62, 1.0, 0.74)
+	var spawn_end_radius := 64.0
+	if enemy_type == "brute":
+		spawn_color = Color(1.0, 0.58, 0.48, 0.82)
+		spawn_end_radius = 92.0
+	elif enemy_type == "spitter":
+		spawn_color = Color(0.58, 1.0, 0.74, 0.80)
+		spawn_end_radius = 82.0
+	_spawn_shockwave(enemy_position, spawn_color, 10.0, spawn_end_radius, 0.24, 2.2)
 	next_enemy_id += 1
 
 
@@ -2073,7 +2125,8 @@ func _spawn_enemy_projectile(origin: Vector2) -> void:
 	enemy_projectiles.append({
 		"position": origin,
 		"velocity": fire_direction * spitter_projectile_speed,
-		"ttl": 2.5
+		"ttl": 2.5,
+		"near_miss_emitted": false
 	})
 	_spawn_vfx_burst(origin, Color(0.58, 1.0, 0.88, 0.92), 2, 120.0, 0.14, 4.0)
 
@@ -2087,6 +2140,7 @@ func _update_enemy_projectiles(delta: float) -> void:
 		var position: Vector2 = projectile.get("position", Vector2.ZERO)
 		var velocity: Vector2 = projectile.get("velocity", Vector2.ZERO)
 		var ttl: float = projectile.get("ttl", 0.0)
+		var near_miss_emitted: bool = bool(projectile.get("near_miss_emitted", false))
 		position += velocity * delta
 		ttl -= delta
 		projectile["position"] = position
@@ -2102,7 +2156,14 @@ func _update_enemy_projectiles(delta: float) -> void:
 		if position.y < 310.0 or position.y > viewport_size.y - 44.0:
 			to_remove.append(i)
 			continue
-		if position.distance_to(player_position) <= 34.0:
+		var distance_to_player: float = position.distance_to(player_position)
+		if not near_miss_emitted and distance_to_player <= projectile_near_miss_radius and distance_to_player > 34.0:
+			projectile["near_miss_emitted"] = true
+			enemy_projectiles[i] = projectile
+			_spawn_vfx_burst(player_position, Color(0.66, 1.0, 0.92, 0.82), 3, 110.0, 0.14, 4.2)
+			if performance_mode != "performance":
+				_trigger_screen_shake(0.05, 2.6)
+		if distance_to_player <= 34.0:
 			_apply_player_damage(spitter_projectile_damage * enemy_damage_multiplier, "Spitter acid bolt")
 			to_remove.append(i)
 			enemy_touch_damage_tick = enemy_contact_cooldown_seconds
@@ -2172,6 +2233,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 	wave_active = false
 	wave_wait_tick = 2.5
 	boss_active = false
+	boss_shockwave_telegraph_armed = false
 	status_label.text = "Life lost. %d lives remaining." % player_lives
 
 
@@ -2393,7 +2455,8 @@ func _enter_boss_phase() -> void:
 		"max_hp": boss_base_health + float(wave_number) * boss_health_per_wave,
 		"speed": 72.0
 	}
-	boss_attack_tick = 1.0
+	boss_attack_tick = max(1.0, boss_shockwave_interval_seconds * 0.8)
+	boss_shockwave_telegraph_armed = false
 	player_state = PlayerState.SUPER_BEAST
 	status_label.text = "Titan Protocol complete. Overlord Vex engaged!"
 	_spawn_shockwave(player_position, Color(1.0, 0.58, 0.74, 0.86), 20.0, 260.0, 0.50, 5.2)
@@ -2414,11 +2477,16 @@ func _update_boss_system(delta: float) -> void:
 	boss["position"] = boss_position
 
 	boss_attack_tick -= delta
+	if not boss_shockwave_telegraph_armed and boss_attack_tick <= boss_shockwave_telegraph_seconds:
+		boss_shockwave_telegraph_armed = true
+		_spawn_shockwave(boss_position, Color(1.0, 0.42, 0.62, 0.68), boss_shockwave_radius * 0.35, boss_shockwave_radius, boss_shockwave_telegraph_seconds, 3.4)
+		status_label.text = "Overlord shockwave charging!"
 	if boss_attack_tick <= 0.0:
 		boss_attack_tick = boss_shockwave_interval_seconds
-		_spawn_shockwave(boss_position, Color(1.0, 0.45, 0.65, 0.84), 24.0, 180.0, 0.38, 4.0)
+		boss_shockwave_telegraph_armed = false
+		_spawn_shockwave(boss_position, Color(1.0, 0.45, 0.65, 0.84), 24.0, boss_shockwave_radius, 0.38, 4.0)
 		_trigger_screen_shake(0.12, 8.4)
-		if boss_position.distance_to(player_position) < 180.0:
+		if boss_position.distance_to(player_position) < boss_shockwave_radius:
 			_apply_player_damage(boss_shockwave_damage * enemy_damage_multiplier, "Overlord shockwave")
 		else:
 			_spawn_enemy()
@@ -2432,6 +2500,7 @@ func _on_boss_defeated() -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	boss_shockwave_telegraph_armed = false
 	_spawn_shockwave(player_position, Color(0.76, 0.98, 1.0, 0.94), 30.0, 320.0, 0.52, 5.8)
 	_trigger_screen_shake(0.28, 14.0)
 	player_state = PlayerState.RIFT_WEAVER
@@ -2546,6 +2615,7 @@ func _end_run(victory: bool, reason: String) -> void:
 	vfx_particles.clear()
 	vfx_shockwaves.clear()
 	dash_afterimages.clear()
+	boss_shockwave_telegraph_armed = false
 	screen_shake_time_left = 0.0
 	screen_shake_intensity = 0.0
 	screen_shake_offset = Vector2.ZERO
@@ -2632,7 +2702,12 @@ func _update_hud() -> void:
 	]
 	biome_label.text = "Biome: %s" % biome_names[current_biome_index]
 	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]
-	boss_label.text = "Boss: Overlord Vex engaged" if boss_active else "Boss: pending"
+	if boss_active and boss_shockwave_telegraph_armed:
+		boss_label.text = "Boss: Shockwave in %.1fs" % max(0.0, boss_attack_tick)
+	elif boss_active:
+		boss_label.text = "Boss: Overlord Vex engaged"
+	else:
+		boss_label.text = "Boss: pending"
 	var input_locked := game_ended or tutorial_panel.visible
 	rhino_button.disabled = player_state == PlayerState.RHINO_CHARGE or input_locked
 	pause_button.disabled = game_ended or tutorial_panel.visible
