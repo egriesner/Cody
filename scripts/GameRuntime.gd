@@ -632,7 +632,7 @@ func _draw() -> void:
 		var ghost_pos: Vector2 = ghost.get("position", player_position) + world_offset
 		var ghost_ttl: float = float(ghost.get("ttl", 0.0))
 		var ghost_total_ttl: float = max(0.001, float(ghost.get("total_ttl", 0.001)))
-		var ghost_alpha := clamp(ghost_ttl / ghost_total_ttl, 0.0, 1.0) * 0.52
+		var ghost_alpha: float = float(clamp(ghost_ttl / ghost_total_ttl, 0.0, 1.0)) * 0.52
 		var ghost_tint: Color = ghost.get("color", Color(0.7, 0.95, 1.0, 1.0))
 		if player_sprite_texture != null:
 			var ghost_size := Vector2(92, 92)
@@ -683,13 +683,13 @@ func _draw() -> void:
 		var ring_pos: Vector2 = ring.get("position", Vector2.ZERO) + world_offset
 		var ring_ttl: float = float(ring.get("ttl", 0.0))
 		var ring_total_ttl: float = max(0.001, float(ring.get("total_ttl", 0.001)))
-		var ring_progress := 1.0 - clamp(ring_ttl / ring_total_ttl, 0.0, 1.0)
+		var ring_progress: float = 1.0 - float(clamp(ring_ttl / ring_total_ttl, 0.0, 1.0))
 		var ring_color: Color = ring.get("color", Color(0.85, 0.96, 1.0, 0.9))
 		var ring_start_radius: float = float(ring.get("start_radius", 20.0))
 		var ring_end_radius: float = float(ring.get("end_radius", 120.0))
 		var ring_width: float = float(ring.get("thickness", 3.0))
-		var ring_radius := lerpf(ring_start_radius, ring_end_radius, ring_progress)
-		var ring_alpha := clamp(ring_ttl / ring_total_ttl, 0.0, 1.0)
+		var ring_radius: float = float(lerpf(ring_start_radius, ring_end_radius, ring_progress))
+		var ring_alpha: float = float(clamp(ring_ttl / ring_total_ttl, 0.0, 1.0))
 		draw_arc(ring_pos, ring_radius, 0.0, TAU, 46, Color(ring_color.r, ring_color.g, ring_color.b, ring_color.a * ring_alpha), ring_width, true)
 
 	for particle in vfx_particles:
@@ -1741,7 +1741,7 @@ func _update_screen_shake(delta: float) -> void:
 		screen_shake_offset = Vector2.ZERO
 		return
 	screen_shake_time_left = max(0.0, screen_shake_time_left - delta)
-	var falloff := clamp(screen_shake_time_left / max(0.001, 0.22), 0.0, 1.0)
+	var falloff: float = float(clamp(screen_shake_time_left / max(0.001, 0.22), 0.0, 1.0))
 	var jitter := Vector2(randf_range(-1.0, 1.0), randf_range(-1.0, 1.0))
 	screen_shake_offset = jitter * screen_shake_intensity * (0.35 + 0.65 * falloff)
 
