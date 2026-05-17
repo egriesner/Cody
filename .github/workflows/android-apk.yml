@@ -70,6 +70,12 @@ jobs:
             cp -R /tmp/godot_templates/* "$TEMPLATE_TARGET/"
           fi
 
+      - name: Run smoke check
+        env:
+          GODOT_BIN: godot4
+        run: |
+          ./tools/smoke_check.sh
+
       - name: Generate debug keystore for CI exports
         run: |
           keytool -genkeypair -v \

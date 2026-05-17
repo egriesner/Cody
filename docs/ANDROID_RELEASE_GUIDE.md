@@ -152,16 +152,18 @@ Use these project templates to speed submission preparation:
 - `docs/RELEASE_NOTES_2_0_0.md`
 - `docs/PLAY_UPLOAD_HANDOFF.md`
 
-## 12) One-Command Preflight Check
+## 12) One-Command Smoke + Preflight Check
 
 Before creating a release build, run:
 
 ```bash
+./tools/smoke_check.sh
 ./tools/preflight_release_check.sh
 ```
 
 This verifies:
 
+- key scenes/scripts load in headless Godot smoke probe
 - release docs/templates are present
 - workflow files required for APK/AAB/Play upload exist
 - package ID and Play workflow variable references

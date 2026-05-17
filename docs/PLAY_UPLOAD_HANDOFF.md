@@ -7,6 +7,7 @@ This handoff is the final step list for publishing `RIFT: The Bestiary Protocol`
 Run:
 
 ```bash
+./tools/smoke_check.sh
 ./tools/preflight_release_check.sh
 ```
 
@@ -28,6 +29,7 @@ Artifacts:
 
 - Fill `docs/RELEASE_CANDIDATE_CHECKLIST.md`
 - Fill `docs/INTERNAL_TEST_REPORT_TEMPLATE.md`
+- Run/record `docs/QA_SMOKE_CHECKLIST_2_0.md`
 - Attach/sign off `docs/RELEASE_NOTES_2_0_0.md`
 
 ## 4) Play Console prep (manual)

@@ -1,4 +1,4 @@
-name: Android AAB CI
+name: Android Smoke Checks
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-aab:
+  smoke:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -22,20 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install Android SDK packages
-        run: |
-          yes | sdkmanager --licenses >/dev/null || true
-          sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
       - name: Install Godot headless + export templates
         run: |
@@ -65,34 +51,3 @@ jobs:
           GODOT_BIN: godot4
         run: |
           ./tools/smoke_check.sh
-
-      - name: Generate debug keystore for CI exports
-        run: |
-          keytool -genkeypair -v \
-            -keystore "$RUNNER_TEMP/debug.keystore" \
-            -alias androiddebugkey \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass android \
-            -keypass android \
-            -dname "CN=Android Debug,O=Android,C=US"
-
-      - name: Build AAB
-        env:
-          GODOT_BIN: godot4
-          PRESET_NAME: "Android AAB"
-          INSTALL_ANDROID_BUILD_TEMPLATE: "1"
-          GODOT_ANDROID_KEYSTORE_RELEASE_PATH: ${{ runner.temp }}/debug.keystore
-          GODOT_ANDROID_KEYSTORE_RELEASE_USER: androiddebugkey
-          GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD: android
-        run: |
-          ./tools/build_apk.sh release aab
-
-      - name: Upload AAB artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: rift-aab-release-${{ github.sha }}
-          path: build/*.aab
-          if-no-files-found: error
-          retention-days: 14

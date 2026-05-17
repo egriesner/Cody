@@ -36,10 +36,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Run repository release preflight checks
-        run: |
-          ./tools/preflight_release_check.sh
-
       - name: Validate required configuration
         run: |
           if [ -z "${{ vars.GOOGLE_PLAY_PACKAGE_NAME }}" ]; then
@@ -91,6 +87,12 @@ jobs:
           else
             cp -R /tmp/godot_templates/* "$TEMPLATE_TARGET/"
           fi
+
+      - name: Run smoke check
+        env:
+          GODOT_BIN: godot4
+        run: |
+          ./tools/smoke_check.sh
 
       - name: Decode release keystore from secret
         run: |

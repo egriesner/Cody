@@ -280,6 +280,75 @@
     "maxUiScale": 1.3,
     "highContrastDefault": false
   },
+  "analytics": {
+    "enabled": true,
+    "eventLogPath": "user://telemetry_events.jsonl",
+    "statePath": "user://telemetry_state.json"
+  },
+  "difficultyProfiles": {
+    "easy": {
+      "lives": 4,
+      "enemyHealthMultiplier": 0.86,
+      "enemyDamageMultiplier": 0.78,
+      "enemySpawnMultiplier": 0.84,
+      "enemySpeedMultiplier": 0.93,
+      "lootGainMultiplier": 1.18,
+      "mutatorIntensityMultiplier": 0.86,
+      "eliteSpawnChanceMultiplier": 0.78,
+      "riftEnergyGainMultiplier": 1.16
+    },
+    "normal": {
+      "lives": 3,
+      "enemyHealthMultiplier": 1.0,
+      "enemyDamageMultiplier": 1.0,
+      "enemySpawnMultiplier": 1.0,
+      "enemySpeedMultiplier": 1.0,
+      "lootGainMultiplier": 1.0,
+      "mutatorIntensityMultiplier": 1.0,
+      "eliteSpawnChanceMultiplier": 1.0,
+      "riftEnergyGainMultiplier": 1.0
+    },
+    "hard": {
+      "lives": 2,
+      "enemyHealthMultiplier": 1.22,
+      "enemyDamageMultiplier": 1.34,
+      "enemySpawnMultiplier": 1.16,
+      "enemySpeedMultiplier": 1.08,
+      "lootGainMultiplier": 0.9,
+      "mutatorIntensityMultiplier": 1.18,
+      "eliteSpawnChanceMultiplier": 1.22,
+      "riftEnergyGainMultiplier": 0.88
+    }
+  },
+  "performanceProfiles": {
+    "quality": {
+      "maxActiveEnemies": 64,
+      "maxActiveProjectiles": 48,
+      "maxActiveVfxParticles": 260,
+      "maxActiveShockwaves": 34,
+      "maxActiveDashAfterimages": 58,
+      "maxActiveHitMarkers": 28,
+      "ambientOverlayBaseAlpha": 0.1
+    },
+    "balanced": {
+      "maxActiveEnemies": 56,
+      "maxActiveProjectiles": 36,
+      "maxActiveVfxParticles": 180,
+      "maxActiveShockwaves": 24,
+      "maxActiveDashAfterimages": 36,
+      "maxActiveHitMarkers": 18,
+      "ambientOverlayBaseAlpha": 0.08
+    },
+    "performance": {
+      "maxActiveEnemies": 44,
+      "maxActiveProjectiles": 24,
+      "maxActiveVfxParticles": 110,
+      "maxActiveShockwaves": 12,
+      "maxActiveDashAfterimages": 18,
+      "maxActiveHitMarkers": 10,
+      "ambientOverlayBaseAlpha": 0.05
+    }
+  },
   "dailyReward": {
     "baseScrap": 10,
     "streakScrapBonus": 2,

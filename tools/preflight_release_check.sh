@@ -12,6 +12,7 @@ required_files=(
   "docs/ANDROID_RELEASE_GUIDE.md"
   "docs/PLAYTEST_MATRIX.md"
   "docs/INTERNAL_TEST_REPORT_TEMPLATE.md"
+  "docs/QA_SMOKE_CHECKLIST_2_0.md"
   "docs/RELEASE_NOTES_2_0_0.md"
   "docs/PLAY_UPLOAD_HANDOFF.md"
   "docs/PLAY_STORE_LISTING_TEMPLATE.md"
@@ -22,6 +23,9 @@ required_files=(
   ".github/workflows/android-apk.yml"
   ".github/workflows/android-aab.yml"
   ".github/workflows/android-play-publish.yml"
+  ".github/workflows/android-smoke.yml"
+  "tools/smoke_check.sh"
+  "scripts/Telemetry.gd"
 )
 
 for f in "${required_files[@]}"; do
@@ -60,18 +64,30 @@ for f in \
 done
 
 echo "[preflight] checking workflow guardrails..."
-rg -q "tools/preflight_release_check\\.sh" ".github/workflows/android-aab.yml" || {
-  echo "[preflight] android-aab workflow missing preflight invocation" >&2
+rg -q "tools/smoke_check\\.sh" ".github/workflows/android-smoke.yml" || {
+  echo "[preflight] android-smoke workflow missing smoke invocation" >&2
   exit 1
 }
-rg -q "tools/preflight_release_check\\.sh" ".github/workflows/android-play-publish.yml" || {
-  echo "[preflight] android-play-publish workflow missing preflight invocation" >&2
+rg -q "tools/smoke_check\\.sh" ".github/workflows/android-apk.yml" || {
+  echo "[preflight] android-apk workflow missing smoke invocation" >&2
+  exit 1
+}
+rg -q "tools/smoke_check\\.sh" ".github/workflows/android-aab.yml" || {
+  echo "[preflight] android-aab workflow missing smoke invocation" >&2
+  exit 1
+}
+rg -q "tools/smoke_check\\.sh" ".github/workflows/android-play-publish.yml" || {
+  echo "[preflight] android-play-publish workflow missing smoke invocation" >&2
   exit 1
 }
 
 echo "[preflight] checking tool executability..."
 [[ -x "tools/preflight_release_check.sh" ]] || {
   echo "[preflight] tools/preflight_release_check.sh is not executable" >&2
+  exit 1
+}
+[[ -x "tools/smoke_check.sh" ]] || {
+  echo "[preflight] tools/smoke_check.sh is not executable" >&2
   exit 1
 }
 

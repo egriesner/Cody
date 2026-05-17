@@ -14,6 +14,7 @@ Use this for a quick sideloadable APK build.
 From repo root:
 
 ```bash
+./tools/smoke_check.sh
 ./tools/build_apk.sh debug
 ```
 
@@ -76,6 +77,8 @@ This repo now includes `.github/workflows/android-apk.yml`.
 - You can also run it manually from **Actions -> Android APK CI -> Run workflow**.
 - Download from:
   - **GitHub -> Actions -> Android APK CI -> latest run -> Artifacts**
+
+Smoke checks run independently via `.github/workflows/android-smoke.yml` on every push/PR.
 
 ## 8) Permanent package links via GitHub Releases
 

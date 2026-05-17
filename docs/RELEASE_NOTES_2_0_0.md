@@ -22,6 +22,10 @@ Developer: **Code Maxx Studios**
 - Progression and scoring enhancements:
   - Run score now accounts for elite takedowns and Rift Burst usage
   - Expanded run summary metrics and continuation snapshot coverage
+- Launch-readiness operations:
+  - Runtime telemetry + unclean-shutdown diagnostics (`user://telemetry_events.jsonl`, `user://telemetry_state.json`)
+  - New automated smoke gate (`./tools/smoke_check.sh`)
+  - Dedicated CI smoke workflow (`.github/workflows/android-smoke.yml`)
 
 ## Build Artifacts (2.0)
 

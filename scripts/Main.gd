@@ -2,6 +2,7 @@ extends Control
 
 const GAME_RUNTIME_SCRIPT := preload("res://scripts/GameRuntime.gd")
 const SAVE_MANAGER_SCRIPT := preload("res://scripts/SaveManager.gd")
+const TELEMETRY_SCRIPT := preload("res://scripts/Telemetry.gd")
 const CONCEPT_BG_PATH := "res://rift-master-concept-technical-ui-blueprint.svg"
 const STUDIO_SPLASH_PATH := "res://assets/branding/code_maxx_studios_intro.svg"
 const MENU_MUSIC_PATH := "res://assets/audio/music/menu_theme.wav"
@@ -13,7 +14,9 @@ const BUTTON_PRIMARY_PATH := "res://assets/artpack/ui/button_primary.svg"
 const BUTTON_SECONDARY_PATH := "res://assets/artpack/ui/button_secondary.svg"
 
 var profile: Dictionary = {}
+var runtime_config: Dictionary = {}
 var active_runtime: GameRuntime
+var telemetry_heartbeat_tick := 0.0
 
 var title_label: Label
 var subtitle_label: Label
@@ -58,17 +61,37 @@ var intro_active := false
 
 func _ready() -> void:
 	_load_profile()
+	_load_runtime_config()
+	TELEMETRY_SCRIPT.configure(runtime_config.get("analytics", {}))
+	var session_info: Dictionary = TELEMETRY_SCRIPT.start_app_session(profile)
 	_load_visual_assets()
 	_apply_master_volume_from_profile()
 	_build_menu_ui()
 	_setup_menu_audio()
 	_build_intro_splash()
 	_refresh_menu()
+	if bool(session_info.get("dirty_shutdown_detected", false)) and status_label != null:
+		status_label.text = "Recovered from an unexpected close. Continue is available."
+		TELEMETRY_SCRIPT.log_event("menu_recovery_notice_shown", {
+			"has_continue_snapshot": bool(profile.get("has_continue_snapshot", false))
+		}, "warning")
 	_play_intro_if_available()
 
 
 func _load_profile() -> void:
 	profile = SAVE_MANAGER_SCRIPT.load_profile()
+
+
+func _load_runtime_config() -> void:
+	var file := FileAccess.open("res://android_ui_state_config.json", FileAccess.READ)
+	if file == null:
+		runtime_config = {}
+		return
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		runtime_config = {}
+		return
+	runtime_config = parsed
 
 
 func _save_profile() -> void:
@@ -112,6 +135,17 @@ func _apply_master_volume_from_profile() -> void:
 
 
 func _process(_delta: float) -> void:
+	telemetry_heartbeat_tick += _delta
+	if telemetry_heartbeat_tick >= 8.0:
+		telemetry_heartbeat_tick = 0.0
+		TELEMETRY_SCRIPT.update_heartbeat(
+			"menu",
+			{
+				"menu_visible": menu_panel != null and menu_panel.visible,
+				"settings_visible": settings_panel != null and settings_panel.visible,
+				"has_continue_snapshot": bool(profile.get("has_continue_snapshot", false))
+			}
+		)
 	var t: float = float(Time.get_ticks_msec()) / 1000.0
 	if menu_bg_texture_rect != null:
 		var viewport_size := get_viewport_rect().size
@@ -129,6 +163,10 @@ func _process(_delta: float) -> void:
 		subtitle_label.modulate = Color(0.82, 0.94 + 0.06 * (0.5 + 0.5 * sin(t * 1.8)), 1.0, 1.0)
 	if intro_active and intro_logo != null:
 		intro_logo.position.y = intro_logo_base_position.y + sin(t * 2.0) * 6.0
+
+
+func _exit_tree() -> void:
+	TELEMETRY_SCRIPT.mark_clean_shutdown("main_exit")
 
 
 func _setup_menu_audio() -> void:
@@ -697,6 +735,12 @@ func _launch_runtime(use_continue_snapshot: bool) -> void:
 		runtime_profile = SAVE_MANAGER_SCRIPT.clear_continue_snapshot(runtime_profile)
 	profile = runtime_profile
 	runtime.set_profile(runtime_profile)
+	TELEMETRY_SCRIPT.mark_runtime_started({
+		"run_wave": int(runtime_profile.get("continue_snapshot", {}).get("wave_number", 0)) if use_continue_snapshot else 0,
+		"run_difficulty": String(runtime_profile.get("settings", {}).get("difficulty", "normal")),
+		"run_performance": String(runtime_profile.get("settings", {}).get("performance_mode", "balanced")),
+		"use_continue": use_continue_snapshot
+	})
 	runtime.session_finished.connect(_on_runtime_session_finished)
 	runtime.checkpoint_updated.connect(_on_runtime_checkpoint_updated)
 	active_runtime = runtime
@@ -705,10 +749,19 @@ func _launch_runtime(use_continue_snapshot: bool) -> void:
 	menu_panel.visible = false
 	settings_panel.visible = false
 	status_label.text = "Run in progress..."
+	TELEMETRY_SCRIPT.log_event("runtime_launched_from_menu", {
+		"use_continue": use_continue_snapshot
+	})
 
 
 func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
 	var restart_requested := bool(summary.get("request_restart", false))
+	TELEMETRY_SCRIPT.mark_runtime_finished({
+		"victory": victory,
+		"wave_reached": int(summary.get("wave_reached", 0)),
+		"run_score": int(summary.get("run_score", 0)),
+		"rank": String(summary.get("rank", "C"))
+	})
 	profile = SAVE_MANAGER_SCRIPT.apply_session_result(profile, summary)
 	_save_profile()
 	_refresh_menu()
@@ -720,6 +773,9 @@ func _on_runtime_session_finished(victory: bool, summary: Dictionary) -> void:
 		active_runtime = null
 	status_label.text = "Run complete: %s" % ("Victory" if victory else "Session ended")
 	if restart_requested:
+		TELEMETRY_SCRIPT.log_event("runtime_restart_requested", {
+			"prior_victory": victory
+		})
 		_launch_runtime(false)
 
 
@@ -774,6 +830,11 @@ func _on_save_settings_pressed() -> void:
 	_apply_menu_audio_mix()
 	_fade_menu_music_to(_menu_music_target_db(), 0.24)
 	status_label.text = "Settings saved."
+	TELEMETRY_SCRIPT.log_event("settings_saved", {
+		"difficulty": String(settings.get("difficulty", "normal")),
+		"performance_mode": String(settings.get("performance_mode", "balanced")),
+		"show_perf_hud": bool(settings.get("show_perf_hud", false))
+	})
 
 
 func _on_close_settings_pressed() -> void:
@@ -814,3 +875,7 @@ func _on_claim_daily_reward_pressed() -> void:
 		]
 	else:
 		status_label.text = String(result.get("message", "Daily reward unavailable."))
+	TELEMETRY_SCRIPT.log_event("daily_reward_attempt", {
+		"rewarded": bool(result.get("rewarded", false)),
+		"streak": int(result.get("streak", profile.get("daily_streak", 0)))
+	})

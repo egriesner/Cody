@@ -4,6 +4,7 @@ class_name GameRuntime
 signal session_finished(victory: bool, summary: Dictionary)
 signal checkpoint_updated(snapshot: Dictionary)
 const FEEDBACK_BUS_SCRIPT := preload("res://scripts/FeedbackBus.gd")
+const TELEMETRY_SCRIPT := preload("res://scripts/Telemetry.gd")
 
 enum PlayerState {
 	NORMAL,
@@ -367,6 +368,10 @@ var screen_shake_intensity := 0.0
 var screen_shake_offset := Vector2.ZERO
 var top_hud_panel: Panel
 var bottom_hud_panel: Panel
+var telemetry_heartbeat_tick := 0.0
+var mutator_intensity_multiplier := 1.0
+var elite_spawn_chance_multiplier := 1.0
+var rift_energy_gain_multiplier := 1.0
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -376,6 +381,7 @@ func set_profile(input_profile: Dictionary) -> void:
 func _ready() -> void:
 	randomize()
 	_load_config()
+	TELEMETRY_SCRIPT.configure(config.get("analytics", {}))
 	_apply_profile_bonuses()
 	_load_visual_assets()
 	_setup_audio_players()
@@ -386,6 +392,11 @@ func _ready() -> void:
 	player_position = get_viewport_rect().size * 0.5
 	status_label.text = "Run started. Track, craft, survive."
 	_apply_hotbar_context_rules()
+	TELEMETRY_SCRIPT.log_event("runtime_ready", {
+		"difficulty": difficulty_name,
+		"performance_mode": performance_mode,
+		"tutorial_enabled": tutorial_enabled
+	})
 
 	if bool(profile.get("has_continue_snapshot", false)):
 		_load_snapshot(profile.get("continue_snapshot", {}))
@@ -593,6 +604,15 @@ func _input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	if viewport_size != get_viewport_rect().size:
 		_recalculate_input_regions()
+	telemetry_heartbeat_tick += delta
+	if telemetry_heartbeat_tick >= 8.0:
+		telemetry_heartbeat_tick = 0.0
+		TELEMETRY_SCRIPT.update_heartbeat("runtime", {
+			"run_wave": wave_number,
+			"run_difficulty": difficulty_name,
+			"run_performance": performance_mode,
+			"boss_active": boss_active
+		})
 
 	if game_ended:
 		_update_feedback_overlay(delta)
@@ -1032,13 +1052,21 @@ func _roll_wave_mutator() -> void:
 	var choice: Dictionary = wave_mutator_pool[randi() % wave_mutator_pool.size()]
 	active_mutator_name = String(choice.get("name", "Anomaly"))
 	active_mutator_desc = String(choice.get("description", "Rift conditions changed."))
-	mutator_enemy_health_multiplier = float(choice.get("enemyHealthMultiplier", 1.0))
-	mutator_enemy_speed_multiplier = float(choice.get("enemySpeedMultiplier", 1.0))
-	mutator_spawn_multiplier = float(choice.get("spawnMultiplier", 1.0))
-	mutator_projectile_speed_multiplier = float(choice.get("projectileSpeedMultiplier", 1.0))
-	mutator_projectile_damage_multiplier = float(choice.get("projectileDamageMultiplier", 1.0))
-	mutator_loot_multiplier = float(choice.get("lootMultiplier", 1.0))
-	mutator_xp_multiplier = float(choice.get("xpMultiplier", 1.0))
+	mutator_enemy_health_multiplier = _scaled_mutator_value(float(choice.get("enemyHealthMultiplier", 1.0)))
+	mutator_enemy_speed_multiplier = _scaled_mutator_value(float(choice.get("enemySpeedMultiplier", 1.0)))
+	mutator_spawn_multiplier = _scaled_mutator_value(float(choice.get("spawnMultiplier", 1.0)))
+	mutator_projectile_speed_multiplier = _scaled_mutator_value(float(choice.get("projectileSpeedMultiplier", 1.0)))
+	mutator_projectile_damage_multiplier = _scaled_mutator_value(float(choice.get("projectileDamageMultiplier", 1.0)))
+	mutator_loot_multiplier = _scaled_mutator_value(float(choice.get("lootMultiplier", 1.0)))
+	mutator_xp_multiplier = _scaled_mutator_value(float(choice.get("xpMultiplier", 1.0)))
+
+
+func _scaled_mutator_value(value: float) -> float:
+	if is_equal_approx(mutator_intensity_multiplier, 1.0):
+		return value
+	if value >= 1.0:
+		return 1.0 + (value - 1.0) * mutator_intensity_multiplier
+	return 1.0 - (1.0 - value) * mutator_intensity_multiplier
 
 
 func _apply_profile_bonuses() -> void:
@@ -1069,6 +1097,9 @@ func _apply_profile_bonuses() -> void:
 	enemy_spawn_multiplier = 1.0
 	enemy_speed_multiplier = 1.0
 	loot_gain_multiplier = 1.0
+	mutator_intensity_multiplier = 1.0
+	elite_spawn_chance_multiplier = 1.0
+	rift_energy_gain_multiplier = 1.0
 	max_active_enemies = MAX_ACTIVE_ENEMIES
 	max_active_projectiles = MAX_ACTIVE_PROJECTILES
 	max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
@@ -1076,48 +1107,96 @@ func _apply_profile_bonuses() -> void:
 	max_active_dash_afterimages = MAX_ACTIVE_DASH_AFTERIMAGES
 	max_active_hit_markers = MAX_ACTIVE_HIT_MARKERS
 	ambient_overlay_base_alpha = 0.08
-	if difficulty == "easy":
-		player_lives = 4
-		max_lives = 4
-		enemy_health_multiplier = 0.86
-		enemy_damage_multiplier = 0.78
-		enemy_spawn_multiplier = 0.84
-		enemy_speed_multiplier = 0.93
-		loot_gain_multiplier = 1.18
-	elif difficulty == "hard":
-		player_lives = 2
-		max_lives = 2
-		enemy_health_multiplier = 1.22
-		enemy_damage_multiplier = 1.34
-		enemy_spawn_multiplier = 1.16
-		enemy_speed_multiplier = 1.08
-		loot_gain_multiplier = 0.90
+	var difficulty_profiles: Dictionary = config.get("difficultyProfiles", {})
+	var default_difficulty_profile := {
+		"normal": {
+			"lives": 3,
+			"enemyHealthMultiplier": 1.0,
+			"enemyDamageMultiplier": 1.0,
+			"enemySpawnMultiplier": 1.0,
+			"enemySpeedMultiplier": 1.0,
+			"lootGainMultiplier": 1.0,
+			"mutatorIntensityMultiplier": 1.0,
+			"eliteSpawnChanceMultiplier": 1.0,
+			"riftEnergyGainMultiplier": 1.0
+		},
+		"easy": {
+			"lives": 4,
+			"enemyHealthMultiplier": 0.86,
+			"enemyDamageMultiplier": 0.78,
+			"enemySpawnMultiplier": 0.84,
+			"enemySpeedMultiplier": 0.93,
+			"lootGainMultiplier": 1.18,
+			"mutatorIntensityMultiplier": 0.86,
+			"eliteSpawnChanceMultiplier": 0.78,
+			"riftEnergyGainMultiplier": 1.16
+		},
+		"hard": {
+			"lives": 2,
+			"enemyHealthMultiplier": 1.22,
+			"enemyDamageMultiplier": 1.34,
+			"enemySpawnMultiplier": 1.16,
+			"enemySpeedMultiplier": 1.08,
+			"lootGainMultiplier": 0.90,
+			"mutatorIntensityMultiplier": 1.18,
+			"eliteSpawnChanceMultiplier": 1.22,
+			"riftEnergyGainMultiplier": 0.88
+		}
+	}
+	if typeof(difficulty_profiles) != TYPE_DICTIONARY or difficulty_profiles.is_empty():
+		difficulty_profiles = default_difficulty_profile
+	var selected_diff_profile: Dictionary = difficulty_profiles.get(difficulty, difficulty_profiles.get("normal", {}))
+	player_lives = int(selected_diff_profile.get("lives", 3))
+	max_lives = player_lives
+	enemy_health_multiplier = float(selected_diff_profile.get("enemyHealthMultiplier", 1.0))
+	enemy_damage_multiplier = float(selected_diff_profile.get("enemyDamageMultiplier", 1.0))
+	enemy_spawn_multiplier = float(selected_diff_profile.get("enemySpawnMultiplier", 1.0))
+	enemy_speed_multiplier = float(selected_diff_profile.get("enemySpeedMultiplier", 1.0))
+	loot_gain_multiplier = float(selected_diff_profile.get("lootGainMultiplier", 1.0))
+	mutator_intensity_multiplier = float(selected_diff_profile.get("mutatorIntensityMultiplier", 1.0))
+	elite_spawn_chance_multiplier = float(selected_diff_profile.get("eliteSpawnChanceMultiplier", 1.0))
+	rift_energy_gain_multiplier = float(selected_diff_profile.get("riftEnergyGainMultiplier", 1.0))
 
-	match performance_mode:
-		"quality":
-			max_active_enemies = 64
-			max_active_projectiles = 48
-			max_active_vfx_particles = 260
-			max_active_shockwaves = 34
-			max_active_dash_afterimages = 58
-			max_active_hit_markers = 28
-			ambient_overlay_base_alpha = 0.10
-		"performance":
-			max_active_enemies = 44
-			max_active_projectiles = 24
-			max_active_vfx_particles = 110
-			max_active_shockwaves = 12
-			max_active_dash_afterimages = 18
-			max_active_hit_markers = 10
-			ambient_overlay_base_alpha = 0.05
-		_:
-			max_active_enemies = MAX_ACTIVE_ENEMIES
-			max_active_projectiles = MAX_ACTIVE_PROJECTILES
-			max_active_vfx_particles = MAX_ACTIVE_VFX_PARTICLES
-			max_active_shockwaves = MAX_ACTIVE_SHOCKWAVES
-			max_active_dash_afterimages = MAX_ACTIVE_DASH_AFTERIMAGES
-			max_active_hit_markers = MAX_ACTIVE_HIT_MARKERS
-			ambient_overlay_base_alpha = 0.08
+	var performance_profiles: Dictionary = config.get("performanceProfiles", {})
+	var default_performance_profile := {
+		"quality": {
+			"maxActiveEnemies": 64,
+			"maxActiveProjectiles": 48,
+			"maxActiveVfxParticles": 260,
+			"maxActiveShockwaves": 34,
+			"maxActiveDashAfterimages": 58,
+			"maxActiveHitMarkers": 28,
+			"ambientOverlayBaseAlpha": 0.10
+		},
+		"balanced": {
+			"maxActiveEnemies": MAX_ACTIVE_ENEMIES,
+			"maxActiveProjectiles": MAX_ACTIVE_PROJECTILES,
+			"maxActiveVfxParticles": MAX_ACTIVE_VFX_PARTICLES,
+			"maxActiveShockwaves": MAX_ACTIVE_SHOCKWAVES,
+			"maxActiveDashAfterimages": MAX_ACTIVE_DASH_AFTERIMAGES,
+			"maxActiveHitMarkers": MAX_ACTIVE_HIT_MARKERS,
+			"ambientOverlayBaseAlpha": 0.08
+		},
+		"performance": {
+			"maxActiveEnemies": 44,
+			"maxActiveProjectiles": 24,
+			"maxActiveVfxParticles": 110,
+			"maxActiveShockwaves": 12,
+			"maxActiveDashAfterimages": 18,
+			"maxActiveHitMarkers": 10,
+			"ambientOverlayBaseAlpha": 0.05
+		}
+	}
+	if typeof(performance_profiles) != TYPE_DICTIONARY or performance_profiles.is_empty():
+		performance_profiles = default_performance_profile
+	var selected_perf_profile: Dictionary = performance_profiles.get(performance_mode, performance_profiles.get("balanced", {}))
+	max_active_enemies = int(selected_perf_profile.get("maxActiveEnemies", MAX_ACTIVE_ENEMIES))
+	max_active_projectiles = int(selected_perf_profile.get("maxActiveProjectiles", MAX_ACTIVE_PROJECTILES))
+	max_active_vfx_particles = int(selected_perf_profile.get("maxActiveVfxParticles", MAX_ACTIVE_VFX_PARTICLES))
+	max_active_shockwaves = int(selected_perf_profile.get("maxActiveShockwaves", MAX_ACTIVE_SHOCKWAVES))
+	max_active_dash_afterimages = int(selected_perf_profile.get("maxActiveDashAfterimages", MAX_ACTIVE_DASH_AFTERIMAGES))
+	max_active_hit_markers = int(selected_perf_profile.get("maxActiveHitMarkers", MAX_ACTIVE_HIT_MARKERS))
+	ambient_overlay_base_alpha = float(selected_perf_profile.get("ambientOverlayBaseAlpha", 0.08))
 
 
 func _setup_feedback_bus() -> void:
@@ -2353,7 +2432,7 @@ func _spawn_enemy() -> void:
 		hp *= 1.2
 		speed *= 1.12
 	var elite := false
-	var elite_chance: float = float(clamp(elite_spawn_chance_base + float(wave_number) * 0.008, 0.0, 0.42))
+	var elite_chance: float = float(clamp((elite_spawn_chance_base + float(wave_number) * 0.008) * elite_spawn_chance_multiplier, 0.0, 0.48))
 	if randf() < elite_chance:
 		elite = true
 		hp *= elite_health_multiplier
@@ -2620,7 +2699,7 @@ func _scaled_xp_value(amount: int) -> int:
 func _gain_rift_energy(amount: float) -> void:
 	if amount <= 0.0:
 		return
-	rift_energy = clamp(rift_energy + amount, 0.0, rift_energy_max)
+	rift_energy = clamp(rift_energy + amount * rift_energy_gain_multiplier, 0.0, rift_energy_max)
 
 
 func _scavenge_resources(scrap: int, crystals: int, melons: int, berries: int) -> void:
@@ -2983,6 +3062,13 @@ func _end_run(victory: bool, reason: String) -> void:
 	end_subtitle.text += "\nMax combo: x%.2f | Dash uses: %d" % [max_combo_reached, dash_uses_this_run]
 	end_subtitle.text += "\nRift bursts: %d" % rift_bursts_used
 	pending_result = _build_session_summary(victory, {}, reason)
+	TELEMETRY_SCRIPT.log_event("run_ended_in_runtime", {
+		"victory": victory,
+		"reason": reason,
+		"wave_reached": wave_number,
+		"run_score": int(pending_result.get("run_score", 0)),
+		"rank": String(pending_result.get("rank", "C"))
+	})
 
 
 func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String) -> Dictionary:
@@ -3270,6 +3356,11 @@ func _on_rift_burst_pressed() -> void:
 				direction = player_direction
 			boss_hit = _damage_boss_from_attack(direction, rift_burst_damage * 0.70, rift_burst_radius + 120.0)
 	status_label.text = "Rift Burst detonated: %d enemies%s." % [kills, ", boss staggered" if boss_hit else ""]
+	TELEMETRY_SCRIPT.log_event("rift_burst_used", {
+		"kills": kills,
+		"boss_hit": boss_hit,
+		"wave": wave_number
+	})
 
 
 func _on_rhino_pressed() -> void:
@@ -3325,7 +3416,7 @@ func _on_scavenge_pressed() -> void:
 	var melon_gain := _scaled_loot_value(1 if randf() > 0.55 else 0)
 	var berry_gain := _scaled_loot_value(1 if randf() > 0.45 else 0)
 	_scavenge_resources(scrap_gain, crystal_gain, melon_gain, berry_gain)
-	_grant_xp(10)
+	_grant_xp(_scaled_xp_value(10))
 	status_label.text = "Scavenge burst: +%d scrap, +%d crystals." % [scrap_gain, crystal_gain]
 
 
@@ -3334,7 +3425,7 @@ func _on_gain_page_pressed() -> void:
 		return
 	bestiary_pages += 1
 	pages_collected_this_run += 1
-	_grant_xp(12)
+	_grant_xp(_scaled_xp_value(12))
 	feedback_bus.emit_feedback("objective")
 	if _can_unlock_super_beast():
 		status_label.text = "Titan Protocol complete: Super Beast ready for Overlord arena."
@@ -3350,22 +3441,33 @@ func _on_pause_pressed() -> void:
 	is_soft_paused = true
 	pause_panel.visible = true
 	_play_sfx("ui_click")
+	TELEMETRY_SCRIPT.log_event("runtime_paused", {
+		"wave": wave_number
+	})
 
 
 func _on_resume_pressed() -> void:
 	is_soft_paused = false
 	pause_panel.visible = false
 	_play_sfx("ui_click")
+	TELEMETRY_SCRIPT.log_event("runtime_resumed", {
+		"wave": wave_number
+	})
 
 
 func _on_save_and_menu_pressed() -> void:
 	var snapshot := _build_continue_snapshot()
 	var result := _build_session_summary(false, snapshot, "Paused and returned to menu")
+	TELEMETRY_SCRIPT.log_event("runtime_save_and_menu", {
+		"wave_reached": int(result.get("wave_reached", wave_number)),
+		"run_score": int(result.get("run_score", 0))
+	})
 	session_finished.emit(false, result)
 	queue_free()
 
 
 func _on_end_run_pressed() -> void:
+	TELEMETRY_SCRIPT.log_event("runtime_end_requested", {"wave": wave_number})
 	_end_run(false, "Run manually ended from pause menu.")
 
 
@@ -3374,6 +3476,10 @@ func _on_retry_pressed() -> void:
 	if result.is_empty():
 		result = _build_session_summary(false, {}, "Run restarted from end panel")
 	result["request_restart"] = true
+	TELEMETRY_SCRIPT.log_event("runtime_retry_requested", {
+		"wave_reached": int(result.get("wave_reached", wave_number)),
+		"victory": bool(result.get("victory", false))
+	})
 	session_finished.emit(bool(result.get("victory", false)), result)
 	queue_free()
 
@@ -3382,5 +3488,9 @@ func _on_return_menu_pressed() -> void:
 	var result := pending_result.duplicate(true)
 	if result.is_empty():
 		result = _build_session_summary(end_title.text == "VICTORY", {}, "Run finished")
+	TELEMETRY_SCRIPT.log_event("runtime_return_menu", {
+		"wave_reached": int(result.get("wave_reached", wave_number)),
+		"victory": bool(result.get("victory", false))
+	})
 	session_finished.emit(bool(result.get("victory", false)), result)
 	queue_free()
