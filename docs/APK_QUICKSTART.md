@@ -2,6 +2,8 @@
 
 Use this for a quick sideloadable APK build.
 
+If your test device blocks app installs, use `docs/BROWSER_TEST_QUICKSTART.md` for Web builds.
+
 ## 1) Prerequisites
 
 - Godot 4.x installed (`godot4` or `godot` in PATH)

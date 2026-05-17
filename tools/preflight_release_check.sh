@@ -12,6 +12,7 @@ required_files=(
   "docs/ANDROID_RELEASE_GUIDE.md"
   "docs/PLAYTEST_MATRIX.md"
   "docs/INTERNAL_TEST_REPORT_TEMPLATE.md"
+  "docs/BROWSER_TEST_QUICKSTART.md"
   "docs/QA_SMOKE_CHECKLIST_2_0.md"
   "docs/PRODUCTION_LAUNCH_RUNBOOK_2_0.md"
   "docs/RELEASE_NOTES_2_0_0.md"
@@ -26,8 +27,10 @@ required_files=(
   ".github/workflows/android-play-publish.yml"
   ".github/workflows/android-smoke.yml"
   ".github/workflows/android-release-candidate.yml"
+  ".github/workflows/web-build.yml"
   "tools/smoke_check.sh"
   "tools/release_orchestrator.sh"
+  "tools/build_web.sh"
   "scripts/Telemetry.gd"
 )
 
@@ -41,6 +44,10 @@ done
 echo "[preflight] checking package id and workflow variables..."
 rg -q "com\\.codemaxstudios\\.rift" "export_presets.cfg" || {
   echo "[preflight] package id check failed in export_presets.cfg" >&2
+  exit 1
+}
+rg -q 'name="Web"' "export_presets.cfg" || {
+  echo "[preflight] Web preset missing in export_presets.cfg" >&2
   exit 1
 }
 rg -q "GOOGLE_PLAY_PACKAGE_NAME" ".github/workflows/android-play-publish.yml" || {
@@ -87,6 +94,10 @@ rg -q "tools/release_orchestrator\\.sh" ".github/workflows/android-release-candi
   echo "[preflight] android-release-candidate workflow missing orchestrator invocation" >&2
   exit 1
 }
+rg -q "tools/build_web\\.sh" ".github/workflows/web-build.yml" || {
+  echo "[preflight] web-build workflow missing build_web invocation" >&2
+  exit 1
+}
 
 echo "[preflight] checking tool executability..."
 [[ -x "tools/preflight_release_check.sh" ]] || {
@@ -99,6 +110,10 @@ echo "[preflight] checking tool executability..."
 }
 [[ -x "tools/release_orchestrator.sh" ]] || {
   echo "[preflight] tools/release_orchestrator.sh is not executable" >&2
+  exit 1
+}
+[[ -x "tools/build_web.sh" ]] || {
+  echo "[preflight] tools/build_web.sh is not executable" >&2
   exit 1
 }
 

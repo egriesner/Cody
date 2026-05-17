@@ -38,6 +38,16 @@ Artifacts uploaded:
 - release manifest
 - markdown summary
 
+## 2b) Browser build path (managed devices / no install)
+
+If test devices block APK install, build and host the browser bundle:
+
+```bash
+./tools/build_web.sh release
+```
+
+Then host `build/web` on static hosting and test via URL on the device browser.
+
 ## 3) Production signing + Play publish (CI path)
 
 Set repository variable:

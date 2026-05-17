@@ -81,6 +81,7 @@ Developer/Studio: **Code Maxx Studios**
 See `docs/ANDROID_RELEASE_GUIDE.md` for keystore setup, export steps, sharing APKs, and Play Store app bundle publishing.
 Use `docs/PLAYTEST_MATRIX.md` as the final QA checklist before external tester rollout.
 Use `docs/APK_QUICKSTART.md` for the fastest debug/release APK and AAB build commands.
+Use `docs/BROWSER_TEST_QUICKSTART.md` for browser-based testing (PC + managed devices).
 Use `docs/PLAY_STORE_LISTING_TEMPLATE.md` and `docs/PRIVACY_POLICY_TEMPLATE.md` to finalize Play listing metadata and policy text.
 Use `docs/RELEASE_CANDIDATE_CHECKLIST.md` to gate promotion to production.
 Use `docs/INTERNAL_TEST_REPORT_TEMPLATE.md` to log each internal/closed test cycle.
@@ -93,6 +94,7 @@ Run `./tools/preflight_release_check.sh` before promoting to external tracks.
 Runtime telemetry diagnostics are written to `user://telemetry_events.jsonl` and `user://telemetry_state.json`.
 GitHub Actions now auto-builds APK artifacts via `.github/workflows/android-apk.yml`.
 GitHub Actions now auto-builds AAB artifacts via `.github/workflows/android-aab.yml`.
+GitHub Actions now auto-builds browser bundles via `.github/workflows/web-build.yml`.
 GitHub Actions now runs fast smoke gates via `.github/workflows/android-smoke.yml`.
 GitHub Actions release-candidate bundle is available via `.github/workflows/android-release-candidate.yml`.
 GitHub Release APK publishing is automated via `.github/workflows/android-apk-release.yml`.

@@ -28,6 +28,7 @@ Developer: **Code Maxx Studios**
   - One-command release candidate orchestrator (`./tools/release_orchestrator.sh`)
   - Dedicated CI smoke workflow (`.github/workflows/android-smoke.yml`)
   - Dedicated CI release-candidate artifact bundle workflow (`.github/workflows/android-release-candidate.yml`)
+  - Dedicated browser build path (`./tools/build_web.sh`, `.github/workflows/web-build.yml`)
 
 ## Build Artifacts (2.0)
 
