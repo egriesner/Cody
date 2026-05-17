@@ -381,6 +381,19 @@ var map_obstacle_count := 8
 var map_detail_count := 26
 var map_animation_strength := 1.0
 var map_obstacle_padding := 60.0
+var map_bushes: Array[Dictionary] = []
+var map_crates: Array[Dictionary] = []
+var power_cube_pickups: Array[Dictionary] = []
+var player_hidden_in_bush := false
+var attack_ammo_max := 3
+var attack_ammo := 3.0
+var attack_reload_seconds := 0.95
+var out_of_combat_heal_delay := 3.2
+var out_of_combat_heal_rate := 12.0
+var damage_free_time := 99.0
+var power_cubes_collected := 0
+var power_cube_damage_bonus := 0.08
+var power_cube_health_bonus := 18.0
 
 
 func set_profile(input_profile: Dictionary) -> void:
@@ -661,6 +674,7 @@ func _process(delta: float) -> void:
 	_apply_hotbar_context_rules()
 	_update_movement(delta)
 	_update_combat(delta)
+	_update_power_cube_pickups(delta)
 	_update_companion_logic(delta)
 	_update_wave_system(delta)
 	_update_boss_system(delta)
@@ -817,6 +831,9 @@ func _draw() -> void:
 		var slash_alpha: float = 0.12 + 0.48 * slash_strength
 		draw_arc(player_draw_position, slash_radius, slash_angle - slash_span, slash_angle + slash_span, 38, Color(0.74, 0.96, 1.0, slash_alpha), 4.6, true)
 		draw_arc(player_draw_position, slash_radius + 11.0, slash_angle - slash_span * 0.75, slash_angle + slash_span * 0.75, 32, Color(0.70, 0.94, 1.0, slash_alpha * 0.58), 2.2, true)
+	if player_hidden_in_bush:
+		draw_circle(player_draw_position, 42.0, Color(0.42, 0.88, 0.50, 0.14))
+		draw_arc(player_draw_position, 52.0, 0.0, TAU, 28, Color(0.68, 0.96, 0.72, 0.24), 2.0, true)
 	draw_line(player_draw_position, player_draw_position + player_direction * 44, Color("#d8fbff"), 4.0)
 	var aim_vector: Vector2 = player_direction
 	if right_vector.length() > 0.20:
@@ -841,6 +858,10 @@ func _draw() -> void:
 		var enemy_bob: float = sin(enemy_phase) * (2.0 if enemy_type == "brute" else 3.0)
 		var enemy_tilt: float = clamp(cos(enemy_phase * 0.9) * 0.09, -0.12, 0.12)
 		enemy_draw_position += Vector2(0.0, enemy_bob)
+		var enemy_hidden := _is_enemy_hidden_from_player(enemy_position)
+		if enemy_hidden:
+			draw_circle(enemy_draw_position, 14.0, Color(0.20, 0.34, 0.26, 0.46))
+			continue
 		var enemy_color := Color("#bc7bff")
 		if enemy_type == "brute":
 			enemy_color = Color("#ff8f89")
@@ -1003,6 +1024,16 @@ func _draw_map_terrain(world_offset: Vector2, time_seconds: float, pulse: float)
 		if performance_mode == "quality":
 			draw_arc(detail_pos, detail_radius * (1.15 + 0.05 * pulse), 0.0, TAU, 28, Color(detail_color.r, detail_color.g, detail_color.b, detail_alpha * 0.38), 1.6, true)
 
+	for bush in map_bushes:
+		var bush_pos: Vector2 = bush.get("position", Vector2.ZERO) + world_offset * 0.72
+		var bush_radius: float = float(bush.get("radius", 56.0))
+		var bush_phase: float = float(bush.get("phase", 0.0))
+		var leaf_wave: float = 0.5 + 0.5 * sin(time_seconds * 1.8 + bush_phase)
+		draw_circle(bush_pos, bush_radius, Color(0.18, 0.56, 0.30, 0.32 + 0.12 * leaf_wave))
+		draw_circle(bush_pos + Vector2(bush_radius * 0.26, -bush_radius * 0.12), bush_radius * 0.62, Color(0.36, 0.80, 0.46, 0.28 + 0.14 * leaf_wave))
+		if performance_mode != "performance":
+			draw_arc(bush_pos, bush_radius * (0.92 + 0.08 * leaf_wave), 0.0, TAU, 26, Color(0.62, 0.96, 0.66, 0.22), 1.6, true)
+
 	for obstacle in map_obstacles:
 		var obstacle_pos: Vector2 = obstacle.get("position", Vector2.ZERO) + world_offset * 0.90
 		var obstacle_radius: float = float(obstacle.get("radius", 44.0))
@@ -1036,6 +1067,34 @@ func _draw_map_terrain(world_offset: Vector2, time_seconds: float, pulse: float)
 			var conduit_tip := obstacle_pos + Vector2(cos(conduit_phase), sin(conduit_phase)) * obstacle_radius * 0.74
 			draw_line(obstacle_pos, conduit_tip, Color(accent_color.r, accent_color.g, accent_color.b, 0.70), 2.4)
 			draw_circle(conduit_tip, obstacle_radius * 0.12, Color(trim_color.r, trim_color.g, trim_color.b, 0.72))
+
+	for crate in map_crates:
+		var crate_pos: Vector2 = crate.get("position", Vector2.ZERO) + world_offset * 0.88
+		var crate_size: float = float(crate.get("size", 48.0))
+		var crate_hp: float = float(crate.get("hp", 1.0))
+		var crate_max_hp: float = float(crate.get("max_hp", 1.0))
+		var crate_ratio: float = clamp(crate_hp / max(0.001, crate_max_hp), 0.0, 1.0)
+		var crate_phase: float = float(crate.get("phase", 0.0))
+		var crate_glow: float = 0.5 + 0.5 * sin(time_seconds * 2.8 + crate_phase)
+		draw_rect(Rect2(crate_pos - Vector2.ONE * crate_size * 0.5, Vector2.ONE * crate_size), Color(0.48, 0.36, 0.24, 0.82))
+		draw_rect(Rect2(crate_pos - Vector2.ONE * crate_size * 0.36, Vector2.ONE * crate_size * 0.72), Color(0.70, 0.54, 0.36, 0.90))
+		draw_line(crate_pos + Vector2(-crate_size * 0.22, -crate_size * 0.22), crate_pos + Vector2(crate_size * 0.22, crate_size * 0.22), Color(0.86, 0.70, 0.50, 0.92), 2.6)
+		draw_line(crate_pos + Vector2(crate_size * 0.22, -crate_size * 0.22), crate_pos + Vector2(-crate_size * 0.22, crate_size * 0.22), Color(0.86, 0.70, 0.50, 0.92), 2.6)
+		draw_arc(crate_pos, crate_size * 0.64, 0.0, TAU, 22, Color(0.98, 0.88, 0.60, 0.20 + 0.14 * crate_glow), 1.8, true)
+		draw_rect(Rect2(crate_pos.x - crate_size * 0.32, crate_pos.y - crate_size * 0.62, crate_size * 0.64, 4.0), Color(0.08, 0.08, 0.08, 0.88))
+		draw_rect(Rect2(crate_pos.x - crate_size * 0.32, crate_pos.y - crate_size * 0.62, crate_size * 0.64 * crate_ratio, 4.0), Color(1.0, 0.92, 0.62, 0.92))
+
+	for cube in power_cube_pickups:
+		var cube_pos: Vector2 = cube.get("position", Vector2.ZERO) + world_offset * 0.82
+		var cube_phase: float = float(cube.get("phase", 0.0))
+		var cube_pulse: float = 0.5 + 0.5 * sin(time_seconds * 4.2 + cube_phase)
+		var cube_size: float = 10.0 + 3.2 * cube_pulse
+		var top := cube_pos + Vector2(0.0, -cube_size)
+		var right := cube_pos + Vector2(cube_size, 0.0)
+		var bottom := cube_pos + Vector2(0.0, cube_size)
+		var left := cube_pos + Vector2(-cube_size, 0.0)
+		draw_colored_polygon(PackedVector2Array([top, right, bottom, left]), Color(1.0, 0.96, 0.60, 0.94))
+		draw_arc(cube_pos, cube_size * 1.5, 0.0, TAU, 26, Color(1.0, 0.96, 0.68, 0.22 + 0.18 * cube_pulse), 2.0, true)
 
 
 func _obstacle_palette(style: String) -> Dictionary:
@@ -1073,6 +1132,9 @@ func _generate_map_layout(force_new_seed: bool) -> void:
 		map_layout_revision += 1
 	map_obstacles.clear()
 	map_details.clear()
+	map_bushes.clear()
+	map_crates.clear()
+	power_cube_pickups.clear()
 
 	var rng := RandomNumberGenerator.new()
 	var seed_value: int = int(104729 * (current_biome_index + 1) + 8191 * map_layout_revision + 157 * max(1, wave_number))
@@ -1080,6 +1142,8 @@ func _generate_map_layout(force_new_seed: bool) -> void:
 
 	var obstacle_target: int = maxi(4, int(round(float(map_obstacle_count) * (0.82 if performance_mode == "performance" else 1.0))))
 	var detail_target: int = maxi(10, int(round(float(map_detail_count) * (0.72 if performance_mode == "performance" else 1.0))))
+	var bush_target: int = maxi(4, int(round(float(map_obstacle_count) * 0.55)))
+	var crate_target: int = maxi(3, int(round(float(map_obstacle_count) * 0.45)))
 	var obstacle_styles: Array[String] = _obstacle_style_pool_for_biome(current_biome_index)
 
 	var left_bound: float = left_dead_zone_px + 140.0
@@ -1128,6 +1192,61 @@ func _generate_map_layout(force_new_seed: bool) -> void:
 			"color": Color(detail_color.r, detail_color.g, detail_color.b, 1.0)
 		})
 
+	var bush_attempts := 0
+	while map_bushes.size() < bush_target and bush_attempts < bush_target * 28:
+		bush_attempts += 1
+		var bush_radius: float = rng.randf_range(42.0, 78.0)
+		var bush_pos := Vector2(rng.randf_range(left_bound, right_bound), rng.randf_range(top_bound, bottom_bound))
+		if bush_pos.distance_to(player_position) < bush_radius + 150.0:
+			continue
+		var bush_valid := true
+		for obstacle in map_obstacles:
+			var obstacle_pos: Vector2 = obstacle.get("position", Vector2.ZERO)
+			var obstacle_radius: float = float(obstacle.get("radius", 44.0))
+			if bush_pos.distance_to(obstacle_pos) < obstacle_radius + bush_radius + 24.0:
+				bush_valid = false
+				break
+		if not bush_valid:
+			continue
+		map_bushes.append({
+			"position": bush_pos,
+			"radius": bush_radius,
+			"phase": rng.randf_range(0.0, TAU)
+		})
+
+	var crate_attempts := 0
+	while map_crates.size() < crate_target and crate_attempts < crate_target * 26:
+		crate_attempts += 1
+		var crate_size: float = rng.randf_range(44.0, 56.0)
+		var crate_pos := Vector2(rng.randf_range(left_bound, right_bound), rng.randf_range(top_bound, bottom_bound))
+		if crate_pos.distance_to(player_position) < crate_size + 150.0:
+			continue
+		var crate_valid := true
+		for obstacle in map_obstacles:
+			var obstacle_pos: Vector2 = obstacle.get("position", Vector2.ZERO)
+			var obstacle_radius: float = float(obstacle.get("radius", 44.0))
+			if crate_pos.distance_to(obstacle_pos) < obstacle_radius + crate_size + 14.0:
+				crate_valid = false
+				break
+		if not crate_valid:
+			continue
+		for bush in map_bushes:
+			var bush_pos: Vector2 = bush.get("position", Vector2.ZERO)
+			var bush_radius: float = float(bush.get("radius", 54.0))
+			if crate_pos.distance_to(bush_pos) < bush_radius + crate_size + 10.0:
+				crate_valid = false
+				break
+		if not crate_valid:
+			continue
+		var crate_hp: float = 92.0 + float(wave_number) * 6.0
+		map_crates.append({
+			"position": crate_pos,
+			"size": crate_size,
+			"hp": crate_hp,
+			"max_hp": crate_hp,
+			"phase": rng.randf_range(0.0, TAU)
+		})
+
 
 func _obstacle_style_pool_for_biome(index: int) -> Array[String]:
 	match index:
@@ -1155,6 +1274,19 @@ func _resolve_obstacle_collision(target_position: Vector2, entity_radius: float)
 			resolved_position = obstacle_position + Vector2.RIGHT.rotated(nudge_angle) * required_distance
 		else:
 			resolved_position = obstacle_position + (to_entity / distance) * required_distance
+	for crate in map_crates:
+		var crate_position: Vector2 = crate.get("position", Vector2.ZERO)
+		var crate_radius: float = float(crate.get("size", 48.0)) * 0.52
+		var crate_required_distance: float = crate_radius + entity_radius
+		var crate_to_entity: Vector2 = resolved_position - crate_position
+		var crate_distance: float = crate_to_entity.length()
+		if crate_distance >= crate_required_distance:
+			continue
+		if crate_distance <= 0.001:
+			var crate_phase: float = float(crate.get("phase", 0.0))
+			resolved_position = crate_position + Vector2.RIGHT.rotated(crate_phase) * crate_required_distance
+		else:
+			resolved_position = crate_position + (crate_to_entity / crate_distance) * crate_required_distance
 	resolved_position.x = clamp(resolved_position.x, left_dead_zone_px + 30.0, viewport_size.x - right_dead_zone_px - 30.0)
 	resolved_position.y = clamp(resolved_position.y, 320.0, viewport_size.y - 70.0)
 	return resolved_position
@@ -1166,7 +1298,138 @@ func _map_obstacle_hit(position: Vector2, collider_radius: float) -> bool:
 		var obstacle_radius: float = float(obstacle.get("radius", 40.0))
 		if obstacle_position.distance_to(position) <= obstacle_radius + collider_radius:
 			return true
+	for crate in map_crates:
+		var crate_position: Vector2 = crate.get("position", Vector2.ZERO)
+		var crate_size: float = float(crate.get("size", 48.0))
+		if crate_position.distance_to(position) <= crate_size * 0.5 + collider_radius:
+			return true
 	return false
+
+
+func _is_position_in_bush(position: Vector2, padding: float = 0.0) -> bool:
+	for bush in map_bushes:
+		var bush_pos: Vector2 = bush.get("position", Vector2.ZERO)
+		var bush_radius: float = float(bush.get("radius", 54.0))
+		if bush_pos.distance_to(position) <= bush_radius + padding:
+			return true
+	return false
+
+
+func _is_enemy_hidden_from_player(enemy_position: Vector2) -> bool:
+	if not _is_position_in_bush(enemy_position, -8.0):
+		return false
+	if player_hidden_in_bush and enemy_position.distance_to(player_position) <= 140.0:
+		return false
+	return enemy_position.distance_to(player_position) > 180.0
+
+
+func _update_power_cube_pickups(delta: float) -> void:
+	if power_cube_pickups.is_empty():
+		return
+	var to_remove: Array[int] = []
+	for i in power_cube_pickups.size():
+		var pickup: Dictionary = power_cube_pickups[i]
+		var pickup_position: Vector2 = pickup.get("position", Vector2.ZERO)
+		var pickup_ttl: float = float(pickup.get("ttl", 16.0)) - delta
+		var pickup_phase: float = float(pickup.get("phase", 0.0)) + delta * 3.4
+		var to_player: Vector2 = player_position - pickup_position
+		var pickup_distance: float = to_player.length()
+		if pickup_distance < 220.0 and pickup_distance > 0.001:
+			var attract_speed: float = lerpf(58.0, 320.0, clamp((220.0 - pickup_distance) / 220.0, 0.0, 1.0))
+			pickup_position += to_player.normalized() * attract_speed * delta
+		pickup_distance = pickup_position.distance_to(player_position)
+		pickup["position"] = pickup_position
+		pickup["ttl"] = pickup_ttl
+		pickup["phase"] = pickup_phase
+		power_cube_pickups[i] = pickup
+		if pickup_distance <= 36.0:
+			_collect_power_cube(pickup_position)
+			to_remove.append(i)
+			continue
+		if pickup_ttl <= 0.0:
+			to_remove.append(i)
+	if not to_remove.is_empty():
+		to_remove.reverse()
+		for idx in to_remove:
+			power_cube_pickups.remove_at(idx)
+
+
+func _collect_power_cube(position: Vector2) -> void:
+	power_cubes_collected += 1
+	max_health += power_cube_health_bonus
+	health = clamp(health + power_cube_health_bonus * 0.65, 0.0, max_health)
+	_spawn_hit_marker(position + Vector2(-20, -38), "POWER +1", Color(0.92, 1.0, 0.64, 1.0), 0.44, 52.0)
+	_spawn_vfx_burst(position, Color(1.0, 0.94, 0.62, 0.92), 5, 130.0, 0.22, 5.2)
+
+
+func _spawn_power_cube(position: Vector2, count: int = 1) -> void:
+	for _i in maxi(1, count):
+		var jitter := Vector2(randf_range(-14.0, 14.0), randf_range(-14.0, 14.0))
+		power_cube_pickups.append({
+			"position": position + jitter,
+			"ttl": 16.0,
+			"phase": randf_range(0.0, TAU),
+			"value": 1
+		})
+
+
+func _damage_crates_arc(origin: Vector2, direction: Vector2, range: float, dot_threshold: float, damage: float) -> int:
+	if map_crates.is_empty():
+		return 0
+	var destroyed := 0
+	var to_remove: Array[int] = []
+	for i in map_crates.size():
+		var crate: Dictionary = map_crates[i]
+		var crate_position: Vector2 = crate.get("position", Vector2.ZERO)
+		var to_crate: Vector2 = crate_position - origin
+		var distance: float = to_crate.length()
+		if distance > range or distance < 0.001:
+			continue
+		if to_crate.normalized().dot(direction) < dot_threshold:
+			continue
+		var crate_hp: float = float(crate.get("hp", 0.0)) - damage
+		crate["hp"] = crate_hp
+		map_crates[i] = crate
+		_spawn_vfx_burst(crate_position, Color(1.0, 0.86, 0.62, 0.82), 2, 90.0, 0.16, 4.0)
+		if crate_hp <= 0.0:
+			to_remove.append(i)
+	if not to_remove.is_empty():
+		to_remove.reverse()
+		for idx in to_remove:
+			var crate_dead: Dictionary = map_crates[idx]
+			var crate_position: Vector2 = crate_dead.get("position", Vector2.ZERO)
+			_spawn_shockwave(crate_position, Color(1.0, 0.80, 0.56, 0.82), 10.0, 72.0, 0.20, 2.6)
+			_spawn_power_cube(crate_position, 1 + (1 if randf() < 0.28 else 0))
+			map_crates.remove_at(idx)
+			destroyed += 1
+	return destroyed
+
+
+func _damage_crates_radius(origin: Vector2, radius: float, damage: float) -> int:
+	if map_crates.is_empty():
+		return 0
+	var destroyed := 0
+	var to_remove: Array[int] = []
+	for i in map_crates.size():
+		var crate: Dictionary = map_crates[i]
+		var crate_position: Vector2 = crate.get("position", Vector2.ZERO)
+		if crate_position.distance_to(origin) > radius:
+			continue
+		var crate_hp: float = float(crate.get("hp", 0.0)) - damage
+		crate["hp"] = crate_hp
+		map_crates[i] = crate
+		if crate_hp <= 0.0:
+			to_remove.append(i)
+	if not to_remove.is_empty():
+		to_remove.reverse()
+		for idx in to_remove:
+			var crate_dead: Dictionary = map_crates[idx]
+			var crate_position: Vector2 = crate_dead.get("position", Vector2.ZERO)
+			_spawn_shockwave(crate_position, Color(1.0, 0.80, 0.56, 0.82), 10.0, 78.0, 0.22, 2.8)
+			_spawn_power_cube(crate_position, 2)
+			map_crates.remove_at(idx)
+			destroyed += 1
+	return destroyed
 
 
 func _load_config() -> void:
@@ -1266,6 +1529,13 @@ func _load_config() -> void:
 	map_detail_count = int(map_polish.get("detailCount", map_detail_count))
 	map_animation_strength = float(map_polish.get("animationStrength", map_animation_strength))
 	map_obstacle_padding = float(map_polish.get("obstaclePadding", map_obstacle_padding))
+	attack_ammo_max = int(map_polish.get("attackAmmoMax", attack_ammo_max))
+	attack_reload_seconds = float(map_polish.get("attackReloadSeconds", attack_reload_seconds))
+	out_of_combat_heal_delay = float(map_polish.get("outOfCombatHealDelaySeconds", out_of_combat_heal_delay))
+	out_of_combat_heal_rate = float(map_polish.get("outOfCombatHealRate", out_of_combat_heal_rate))
+	power_cube_damage_bonus = float(map_polish.get("powerCubeDamageBonus", power_cube_damage_bonus))
+	power_cube_health_bonus = float(map_polish.get("powerCubeHealthBonus", power_cube_health_bonus))
+	attack_ammo = float(attack_ammo_max)
 
 	var tutorial_config: Dictionary = config.get("tutorial", {})
 	tutorial_enabled = bool(tutorial_config.get("enabled", tutorial_enabled))
@@ -2256,15 +2526,18 @@ func _is_over_interactive_ui(position: Vector2) -> bool:
 
 
 func _update_survival(delta: float) -> void:
+	damage_free_time += delta
 	var hunger_drain_rate := 1.3
 	if player_state == PlayerState.RHINO_CHARGE:
 		hunger_drain_rate = 2.2
 	hunger = clamp(hunger - hunger_drain_rate * delta, 0.0, max_hunger)
+	player_hidden_in_bush = _is_position_in_bush(player_position, 24.0)
 
 	if player_state == PlayerState.EXHAUSTED:
 		health = clamp(health - (1.6 * delta), 0.0, max_health)
-	elif wave_active:
-		health = clamp(health + (0.30 * delta), 0.0, max_health)
+	elif wave_active and damage_free_time >= out_of_combat_heal_delay:
+		var heal_rate: float = out_of_combat_heal_rate * (0.82 if player_hidden_in_bush else 1.0)
+		health = clamp(health + (heal_rate * delta), 0.0, max_health)
 
 
 func _update_player_state(delta: float) -> void:
@@ -2286,6 +2559,8 @@ func _update_player_state(delta: float) -> void:
 func _update_dash_and_combo(delta: float) -> void:
 	dash_cooldown_remaining = max(0.0, dash_cooldown_remaining - delta)
 	rift_burst_cooldown = max(0.0, rift_burst_cooldown - delta)
+	if input_mode != InputMode.RHINO_BOOST_MODE and attack_ammo < float(attack_ammo_max):
+		attack_ammo = min(float(attack_ammo_max), attack_ammo + (delta / max(0.001, attack_reload_seconds)))
 	if dash_time_left > 0.0:
 		dash_time_left = max(0.0, dash_time_left - delta)
 
@@ -2496,13 +2771,20 @@ func _update_movement(delta: float) -> void:
 
 func _update_combat(delta: float) -> void:
 	attack_cooldown = max(0.0, attack_cooldown - delta)
-	if input_mode == InputMode.ATTACK_MODE and right_vector.length() > 0.6 and attack_cooldown <= 0.0:
+	if input_mode == InputMode.ATTACK_MODE and right_vector.length() > 0.6 and attack_cooldown <= 0.0 and attack_ammo >= 1.0:
 		_fire_attack("Drag fire", right_vector.normalized())
 	elif input_mode == InputMode.RHINO_BOOST_MODE and right_vector.length() > 0.45 and attack_cooldown <= 0.0:
 		_fire_attack("Rhino impact", right_vector.normalized())
 
 
 func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
+	if attack_cooldown > 0.0:
+		return
+	if input_mode != InputMode.RHINO_BOOST_MODE:
+		if attack_ammo < 1.0:
+			status_label.text = "Reloading blaster..."
+			return
+		attack_ammo = max(0.0, attack_ammo - 1.0)
 	attack_cooldown = attack_cooldown_seconds
 	feedback_bus.emit_feedback("attack")
 	_play_sfx("attack")
@@ -2514,8 +2796,9 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 
 	if input_mode == InputMode.RHINO_BOOST_MODE:
 		var rhino_kills := _damage_enemies_radius(player_position, 150.0, 75.0)
+		var rhino_crates := _damage_crates_radius(player_position, 150.0, 120.0)
 		secret_walls_broken += 1 if rhino_kills > 0 else 0
-		status_label.text = "Rhino impact %s. (%s)" % ["cleared targets" if rhino_kills > 0 else "missed", source]
+		status_label.text = "Rhino impact %s. Crates:%d (%s)" % ["cleared targets" if rhino_kills > 0 else "missed", rhino_crates, source]
 		_spawn_shockwave(player_position, Color(0.58, 0.98, 0.94, 0.88), 18.0, 160.0, 0.30, 3.6)
 		_trigger_screen_shake(0.12, 6.8)
 		_damage_boss_from_attack(attack_dir, 34.0, 180.0)
@@ -2527,6 +2810,7 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 	if selected_tag == "heavy_weapon":
 		damage = 42.0
 		range = 260.0
+	damage *= 1.0 + float(power_cubes_collected) * power_cube_damage_bonus
 	var is_critical := randf() < critical_hit_chance
 	if is_critical:
 		damage *= critical_hit_damage_multiplier
@@ -2535,14 +2819,17 @@ func _fire_attack(source: String, facing: Vector2 = Vector2.ZERO) -> void:
 		_spawn_hit_marker(player_position + attack_dir * 66.0, "CRIT!", Color(1.0, 0.95, 0.40, 1.0), 0.48, 58.0)
 
 	var kills_hit := _damage_enemies_arc(player_position, attack_dir, range, 0.88, damage)
+	var crates_broken := _damage_crates_arc(player_position, attack_dir, range * 0.94, 0.84, damage * 0.90)
 	var boss_hit := _damage_boss_from_attack(attack_dir, damage * 0.9, range + 40.0)
-	if kills_hit > 0 or boss_hit:
+	if kills_hit > 0 or boss_hit or crates_broken > 0:
 		if is_critical:
 			status_label.text = "CRITICAL strike landed! (%s)" % source
 		else:
 			status_label.text = "Direct hits landed. (%s)" % source
 		if kills_hit > 0:
 			_spawn_hit_marker(player_position + attack_dir * 78.0, "+%d" % kills_hit, Color(0.82, 1.0, 0.66, 1.0), 0.42, 50.0)
+		if crates_broken > 0:
+			_spawn_hit_marker(player_position + attack_dir * 86.0 + Vector2(0, 20), "CRATE x%d" % crates_broken, Color(1.0, 0.92, 0.64, 0.96), 0.40, 48.0)
 	else:
 		status_label.text = "Critical shot missed. (%s)" % source if is_critical else "Shots fired. (%s)" % source
 		_spawn_hit_marker(player_position + attack_dir * 66.0, "MISS", Color(0.74, 0.9, 1.0, 0.90), 0.36, 42.0)
@@ -2735,6 +3022,7 @@ func _spawn_enemy() -> void:
 	var enemy_position := player_position + Vector2.RIGHT.rotated(angle) * wave_spawn_radius
 	enemy_position.x = clamp(enemy_position.x, left_dead_zone_px + 50.0, viewport_size.x - right_dead_zone_px - 50.0)
 	enemy_position.y = clamp(enemy_position.y, 360.0, viewport_size.y - 100.0)
+	enemy_position = _resolve_obstacle_collision(enemy_position, 22.0)
 
 	var enemy_type := "drone"
 	var hp := (45.0 + (wave_number * 4.0)) * enemy_health_multiplier * mutator_enemy_health_multiplier
@@ -2920,6 +3208,7 @@ func _apply_player_damage(amount: float, source: String) -> void:
 		_gain_rift_energy(1.5)
 		return
 	health = clamp(health - amount, 0.0, max_health)
+	damage_free_time = 0.0
 	_gain_rift_energy(rift_energy_gain_on_hit)
 	combo_streak = 0
 	combo_multiplier = 1.0
@@ -2941,6 +3230,8 @@ func _apply_player_damage(amount: float, source: String) -> void:
 
 	health = max_health
 	hunger = max_hunger * 0.55
+	attack_ammo = float(attack_ammo_max)
+	damage_free_time = 0.0
 	player_position = get_viewport_rect().size * 0.5
 	active_enemies.clear()
 	enemy_projectiles.clear()
@@ -2971,6 +3262,8 @@ func _on_enemy_defeated(enemy: Dictionary) -> void:
 	_spawn_shockwave(enemy_pos, Color(0.78, 0.68, 1.0, 0.72), 10.0, 70.0, 0.20, 2.2)
 	_spawn_hit_marker(enemy_pos + Vector2(-24, -32), "DOWN", Color(0.86, 0.94, 1.0, 1.0), 0.44, 48.0)
 	_gain_rift_energy(rift_energy_gain_on_kill * (1.5 if enemy_is_elite else 1.0))
+	if enemy_is_elite or randf() < 0.28:
+		_spawn_power_cube(enemy_pos, 1 + (1 if enemy_is_elite and randf() < 0.45 else 0))
 	if enemy_type == "brute":
 		_trigger_screen_shake(0.10, 5.2)
 	var current := int(bestiary_entries.get(enemy_type, 0))
@@ -3213,6 +3506,7 @@ func _update_boss_system(delta: float) -> void:
 	boss_position += target_direction * boss_speed * delta
 	boss_position.x = clamp(boss_position.x, left_dead_zone_px + 80.0, viewport_size.x - right_dead_zone_px - 80.0)
 	boss_position.y = clamp(boss_position.y, 340.0, viewport_size.y - 90.0)
+	boss_position = _resolve_obstacle_collision(boss_position, 62.0)
 	boss["position"] = boss_position
 
 	boss_attack_tick -= delta
@@ -3302,7 +3596,9 @@ func _build_continue_snapshot() -> Dictionary:
 		"dash_uses_this_run": dash_uses_this_run,
 		"rift_energy": rift_energy,
 		"rift_burst_cooldown": rift_burst_cooldown,
-		"rift_bursts_used": rift_bursts_used
+		"rift_bursts_used": rift_bursts_used,
+		"power_cubes_collected": power_cubes_collected,
+		"attack_ammo": attack_ammo
 	}
 
 
@@ -3333,7 +3629,10 @@ func _load_snapshot(snapshot: Dictionary) -> void:
 	rift_energy = float(snapshot.get("rift_energy", rift_energy))
 	rift_burst_cooldown = float(snapshot.get("rift_burst_cooldown", rift_burst_cooldown))
 	rift_bursts_used = int(snapshot.get("rift_bursts_used", rift_bursts_used))
+	power_cubes_collected = int(snapshot.get("power_cubes_collected", power_cubes_collected))
+	attack_ammo = float(snapshot.get("attack_ammo", attack_ammo))
 	rift_energy = clamp(rift_energy, 0.0, rift_energy_max)
+	attack_ammo = clamp(attack_ammo, 0.0, float(attack_ammo_max))
 	var loaded_inventory: Dictionary = snapshot.get("inventory", {})
 	if typeof(loaded_inventory) == TYPE_DICTIONARY:
 		inventory = loaded_inventory
@@ -3386,6 +3685,7 @@ func _end_run(victory: bool, reason: String) -> void:
 	end_subtitle.text += "\nRun Score: %d | Rank: %s" % [preview_score, _score_rank(preview_score)]
 	end_subtitle.text += "\nMax combo: x%.2f | Dash uses: %d" % [max_combo_reached, dash_uses_this_run]
 	end_subtitle.text += "\nRift bursts: %d" % rift_bursts_used
+	end_subtitle.text += "\nPower cubes: %d" % power_cubes_collected
 	pending_result = _build_session_summary(victory, {}, reason)
 	TELEMETRY_SCRIPT.log_event("run_ended_in_runtime", {
 		"victory": victory,
@@ -3418,6 +3718,7 @@ func _build_session_summary(victory: bool, snapshot: Dictionary, reason: String)
 		"max_combo_reached": max_combo_reached,
 		"dash_uses": dash_uses_this_run,
 		"rift_bursts_used": rift_bursts_used,
+		"power_cubes_collected": power_cubes_collected,
 		"tutorial_completed": tutorial_completed_this_session or bool(profile.get("tutorial_completed", false)),
 		"continue_snapshot": snapshot
 	}
@@ -3430,6 +3731,7 @@ func _compute_run_score(victory: bool) -> int:
 	score += int(round(max_combo_reached * 120.0))
 	score += pages_collected_this_run * 55
 	score += rift_bursts_used * 35
+	score += power_cubes_collected * 24
 	score += int(health)
 	score += 450 if victory else 0
 	return maxi(score, 0)
@@ -3457,16 +3759,25 @@ func _update_hud() -> void:
 	hunger_bar.max_value = max_hunger
 	health_bar.value = health
 	hunger_bar.value = hunger
-	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s | Perf: %s" % [
+	var regen_remaining: float = max(0.0, out_of_combat_heal_delay - damage_free_time)
+	state_label.text = "State: %s | Input: %s | Lives: %d/%d | Diff: %s | Perf: %s | Regen:%s%s" % [
 		_state_text(player_state),
 		_input_text(input_mode),
 		player_lives,
 		max_lives,
 		difficulty_name.capitalize(),
-		performance_mode.capitalize()
+		performance_mode.capitalize(),
+		"%.1fs" % regen_remaining if regen_remaining > 0.0 else "ON",
+		" | HIDDEN" if player_hidden_in_bush else ""
 	]
 	biome_label.text = "Biome: %s | Terrain:%d" % [biome_names[current_biome_index], map_obstacles.size()]
-	wave_label.text = "Wave: %d (%s)" % [wave_number, "active" if wave_active else "prep"]
+	wave_label.text = "Wave: %d (%s) | Cubes:%d | Ammo:%d/%d" % [
+		wave_number,
+		"active" if wave_active else "prep",
+		power_cubes_collected,
+		int(floor(attack_ammo)),
+		attack_ammo_max
+	]
 	if boss_active and boss_shockwave_telegraph_armed:
 		boss_label.text = "Boss: Shockwave in %.1fs" % max(0.0, boss_attack_tick)
 	elif boss_active:
@@ -3514,6 +3825,12 @@ func _update_hud() -> void:
 	mutator_label.text = "Wave Mutator: %s - %s" % [active_mutator_name, active_mutator_desc]
 
 	loot_label.text = "Annalize active: +30%% drops" if companion_id == "annalize" else "Keeley active: crowd control on 5+ enemies"
+	if input_mode == InputMode.ATTACK_MODE:
+		var whole_ammo: int = int(floor(attack_ammo))
+		if whole_ammo <= 0:
+			action_button.text = "RELOAD"
+		else:
+			action_button.text = "ATTACK x%d" % whole_ammo
 	combo_label.text = "Combo x%.2f (%d)" % [combo_multiplier, combo_streak] if combo_streak > 1 else "Combo x1.00"
 	if combo_multiplier >= 1.8:
 		combo_label.add_theme_color_override("font_color", Color(1.0, 0.98, 0.64))
@@ -3670,7 +3987,9 @@ func _on_rift_burst_pressed() -> void:
 	_spawn_vfx_burst(player_position, Color(0.76, 0.92, 1.0, 0.95), 22, 220.0, 0.38, 7.0)
 	_spawn_hit_marker(player_position + Vector2(-52, -72), "RIFT BURST", Color(0.76, 0.94, 1.0, 1.0), 0.60, 58.0)
 	_trigger_screen_shake(0.20, 10.8)
-	var kills := _damage_enemies_radius(player_position, rift_burst_radius, rift_burst_damage)
+	var burst_damage: float = rift_burst_damage * (1.0 + float(power_cubes_collected) * power_cube_damage_bonus * 0.55)
+	var kills := _damage_enemies_radius(player_position, rift_burst_radius, burst_damage)
+	var crates_broken := _damage_crates_radius(player_position, rift_burst_radius, burst_damage * 1.35)
 	for i in active_enemies.size():
 		var enemy: Dictionary = active_enemies[i]
 		var enemy_position: Vector2 = enemy.get("position", Vector2.ZERO)
@@ -3686,9 +4005,10 @@ func _on_rift_burst_pressed() -> void:
 			if direction.length() < 0.001:
 				direction = player_direction
 			boss_hit = _damage_boss_from_attack(direction, rift_burst_damage * 0.70, rift_burst_radius + 120.0)
-	status_label.text = "Rift Burst detonated: %d enemies%s." % [kills, ", boss staggered" if boss_hit else ""]
+	status_label.text = "Rift Burst detonated: %d enemies, %d crates%s." % [kills, crates_broken, ", boss staggered" if boss_hit else ""]
 	TELEMETRY_SCRIPT.log_event("rift_burst_used", {
 		"kills": kills,
+		"crates_broken": crates_broken,
 		"boss_hit": boss_hit,
 		"wave": wave_number
 	})

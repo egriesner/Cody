@@ -263,7 +263,13 @@
     "obstacleCount": 9,
     "detailCount": 30,
     "animationStrength": 1.0,
-    "obstaclePadding": 62
+    "obstaclePadding": 62,
+    "attackAmmoMax": 3,
+    "attackReloadSeconds": 0.95,
+    "outOfCombatHealDelaySeconds": 3.2,
+    "outOfCombatHealRate": 12.0,
+    "powerCubeDamageBonus": 0.08,
+    "powerCubeHealthBonus": 18
   },
   "tutorial": {
     "enabled": true,
