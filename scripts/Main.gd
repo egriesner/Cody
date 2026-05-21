@@ -260,7 +260,7 @@ func _build_menu_ui() -> void:
 	add_child(menu_panel)
 
 	title_label = Label.new()
-	title_label.text = "RIFT: THE BESTIARY PROTOCOL"
+	title_label.text = "CODY VIDEOGAME"
 	title_label.position = Vector2(152, 34)
 	title_label.add_theme_font_size_override("font_size", 44)
 	menu_panel.add_child(title_label)

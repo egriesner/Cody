@@ -8,8 +8,8 @@ config_version=5
 
 [application]
 
-config/name="RIFT: The Bestiary Protocol"
-config/description="Sci-fi survival brawler for Android tablets by Code Maxx Studios."
+config/name="Cody Videogame"
+config/description="Action brawler for Android tablets by Code Maxx Studios."
 config/version="2.0.0"
 config/icon="res://assets/icon.svg"
 run/main_scene="res://scenes/Main.tscn"
